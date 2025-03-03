@@ -1,0 +1,10 @@
+##subsetdata
+```{r}
+sobj.subset<-sobj.subsets[["Microglia"]]
+```
+
+```{r}
+Idents(sobj.subset)<-"subclass"
+DimPlot(sobj.subset,split.by = "Group")
+```
+

@@ -1,0 +1,109 @@
+##Begining 
+###packages
+
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+library(SeuratWrappers)
+```
+
+###jobname
+
+```{r}
+jobname<-"PRL_30"
+dir.create("../Documents/")
+```
+
+
+###load data
+
+```{r}
+sobj<-readRDS("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20250123-24-Annotation-third-MNN/Documents/sobj_3rd_cleaned.rds")
+```
+##Set Colors
+```{r}
+custom_colors <- c(
+  # ====== 超大类 A（抑制性神经元：ID2/VIP/SST/NDNF/LAMP5/PVALB，蓝绿-紫-品红渐变）=======
+  ## LAMP5（蓝绿色系）
+  "LAMP5-FREM2"    = "#5D9BA8",  # 深蓝绿
+  "LAMP5-RELN"     = "#80B1D3",  # 中蓝绿
+  
+  ## NDNF（紫红色系）
+  "NDNF-CDH23"     = "#C77DB3",  # 紫红
+  "NDNF-RELN"      = "#E6A0CE",  # 浅紫红
+  "NDNF-SEMA3C"    = "#F4CBE5",  # 极浅紫红
+  
+  ## VIP（蓝紫色系）
+  "VIP-ABI3BP"     = "#6A5ACD",  # 深蓝紫
+  "VIP-ADAMTSL1"   = "#8470FF",  # 中蓝紫
+  "VIP-MCTP2"      = "#A899FF",  # 浅蓝紫
+  "VIP-SCML4"      = "#C9C1FF",  # 极浅蓝紫
+  
+  ## SST（品红色系）
+  "SST-ADGRG6"     = "#BA55D3",  # 中品红
+  "SST-MSR1"       = "#DDA0DD",  # 浅品红
+  "SST-PAWR"       = "#EE82EE",  # 粉红
+  
+  ## PVALB（紫-蓝紫色过渡）
+  "PVALB-COL15A1"  = "#9370DB",  # 中紫（连接 VIP 和 SST）
+  "PVALB-DPP10"    = "#AB82FF",  # 浅紫
+  "PVALB-MEPE"     = "#C1A3FF",  # 极浅紫
+
+  # ====== 超大类 B（免疫细胞：Microglia/BAM/T cells，橙红-深红色系）=======
+  "Microglia"      = "#FFA07A",  
+  "Microglia2"     = "#FF8C69",  
+  "BAMs"           = "#FF6B6B",  
+  "T cells"        = "#B22222",  
+
+  # ====== 其他大类 =======
+  ## Astro（蓝绿色系，与超大类 A 协调但更偏绿）
+  "Astro-PLCG1"    = "#6BABA5",  
+  "Astro-SERPINI2" = "#8DD3C7",  
+  
+  ## 兴奋性神经元（L2/3 & L5/6，橙黄色系）
+  "L2/3-CUX2"      = "#FFB14E",  
+  "L3-5-RORB"      = "#FFC97F",  
+  "L5/6-THEMIS"    = "#FFE0B0",  
+  "L5/6-TLE4"      = "#FFF5E1",  
+  
+  ## 胶质细胞（Oligos & OPCs）
+  "Oligos"         = "#BC80BD",  # 紫红
+  "OPCs"           = "#A8DDB5",  # 薄荷绿
+  "OPCs-MBP"       = "#CCEBC5",  
+  
+  ## 血管（独立蓝色）
+  "Vascular"       = "#377EB8"   
+)
+
+# 检查颜色数量
+length(custom_colors) == 29  # TRUE
+```
+
+##subset
+```{r}
+sobj$subcluster<-sobj$subcluster %>% as.character%>%as.factor()
+sobj$subclass<-sobj$subclass %>% as.character%>%as.factor()
+levels(sobj$subclass)
+levels(sobj$class)
+```
+
+
+```{r}
+celltypes<-c("GABAergic","Glutamatergic","Microglia","OPCs")
+sobj.subsets<- list()
+
+for (celltype in celltypes) {
+  sobj.subset <- subset(sobj,subset = class==celltype)
+  sobj.subsets[[celltype]] <- sobj.subset
+}
+
+```
+
+

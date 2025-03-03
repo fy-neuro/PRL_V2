@@ -1,0 +1,76 @@
+##DEG
+```{r}
+dir.create("../Documents/")
+```
+##Group
+```{r}
+condition<-"Group"
+clustermarkers <- list()
+clustermarkers_top30 <- list()
+
+for (celltype in celltypes) {
+
+  cat(celltype,"\n")
+  sobj.subset <- sobj.subsets[[celltype]]
+  Idents(sobj.subset) <- condition
+  
+  sobj.Markers<-FindAllMarkers(sobj.subset,only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+  sobj.Markers %>%
+    group_by(cluster) %>%
+    top_n(n = 30, wt = avg_log2FC) -> top30
+      
+    clustermarkers[[celltype]]<-sobj.Markers
+    clustermarkers_top30[[celltype]]<-top30
+  }
+  write.xlsx(clustermarkers,file =paste0("../Documents/",condition,"_marker.xlsx") ,sheetName=names(clustermarkers))
+  write.xlsx(clustermarkers_top30,file =paste0("../Documents/",condition,"_marker_top30.xlsx") ,sheetName=names(clustermarkers_top30))
+```
+
+
+##Freezing_gait
+```{r}
+condition<-"Freezing_gait"
+clustermarkers <- list()
+clustermarkers_top30 <- list()
+
+for (celltype in celltypes) {
+
+  cat(celltype,"\n")
+  sobj.subset <- sobj.subsets[[celltype]]
+  Idents(sobj.subset) <- condition
+  
+  sobj.Markers<-FindAllMarkers(sobj.subset,only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+  sobj.Markers %>%
+    group_by(cluster) %>%
+    top_n(n = 30, wt = avg_log2FC) -> top30
+      
+    clustermarkers[[celltype]]<-sobj.Markers
+    clustermarkers_top30[[celltype]]<-top30
+  }
+  write.xlsx(clustermarkers,file =paste0("../Documents/",condition,"_marker.xlsx") ,sheetName=names(clustermarkers))
+  write.xlsx(clustermarkers_top30,file =paste0("../Documents/",condition,"_marker_top30.xlsx") ,sheetName=names(clustermarkers_top30))
+```
+
+##Stage
+```{r}
+condition<-"Stage"
+clustermarkers <- list()
+clustermarkers_top30 <- list()
+
+for (celltype in celltypes) {
+
+  cat(celltype,"\n")
+  sobj.subset <- sobj.subsets[[celltype]]
+  Idents(sobj.subset) <- condition
+  
+  sobj.Markers<-FindAllMarkers(sobj.subset,only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+  sobj.Markers %>%
+    group_by(cluster) %>%
+    top_n(n = 30, wt = avg_log2FC) -> top30
+      
+    clustermarkers[[celltype]]<-sobj.Markers
+    clustermarkers_top30[[celltype]]<-top30
+  }
+  write.xlsx(clustermarkers,file =paste0("../Documents/",condition,"_marker.xlsx") ,sheetName=names(clustermarkers))
+  write.xlsx(clustermarkers_top30,file =paste0("../Documents/",condition,"_marker_top30.xlsx") ,sheetName=names(clustermarkers_top30))
+```

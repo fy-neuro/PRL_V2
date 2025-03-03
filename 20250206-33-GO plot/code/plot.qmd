@@ -1,0 +1,121 @@
+
+```{r}
+GO_results<-list()
+filename <- paste0("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20250206-32-GO Enrichment/Documents/","Groupsubclass_GO.xlsx")
+celltypes <- getSheetNames(filename)
+
+for (celltype in celltypes) {
+  GO_result<-read.xlsx(filename,sheet = celltype)
+  GO_results[[celltype]] <- GO_result
+}
+
+```
+
+
+
+"BP" = "#FB9A99", "CC" = "#A6CEE3","MF"="#B2DF8A"
+
+
+```{r}
+# 修改后的可视化函数
+plot_go_by_celltype <- function(GO_data, celltype_name){
+  # 按ONTOLOGY和富集倍数排序
+  GO_sorted <- GO_data %>%
+    top_n(20, wt = FoldEnrichment) %>%
+    arrange(ONTOLOGY, desc(-log10(p.adjust)))
+  
+  # 创建有序因子
+  GO_sorted$Description <- factor(GO_sorted$Description, 
+                                  levels = unique(GO_sorted$Description))
+  
+  # 绘制条形图
+  p <- ggplot(GO_sorted, 
+              aes(x = Description, 
+                  y = -log10(p.adjust), 
+                  fill = ONTOLOGY)) +
+    geom_bar(stat = "identity", width = 0.8) +
+    coord_flip() +
+    scale_fill_manual(values = c("BP" = "#FB9A99", 
+                                 "CC" = "#A6CEE3",
+                                 "MF" = "#B2DF8A")) +
+    labs(title = paste("Top Pathways in", celltype_name),
+         x = "Pathway",
+         y = "-log10(Adjusted P-value)") +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+          axis.text.y = element_text(size = 10),
+          legend.position = "top")
+  
+  return(p)
+}
+
+# plot_go_by_celltype(GO_result,celltype)
+
+# 使用示例（假设有多个celltype的数据框）
+# celltypes <- c("T Cells", "B Cells", "Macrophages")
+# for(ct in celltypes){
+#   # 这里需要根据实际情况获取对应celltype的数据
+#   go_sub <- GO_result %>% filter(CellType == ct) 
+#   p <- plot_go_by_celltype(go_sub, ct)
+#   ggsave(paste0("../plot/", ct, "_pathway.png"),
+#          plot = p,
+#          width = 4000, 
+#          height = 2000,
+#          dpi = 500,
+#          units = "px")
+# }
+```
+
+```{r}
+celltype <- celltypes[10]
+```
+
+
+```{r}
+for (celltype in celltypes) {
+  cat(celltype,"\n")
+  GO_result <- GO_results[[celltype]]
+  barp <- plot_go_by_celltype(GO_result,celltype)
+  ggsave(filename = paste0("../plot/",celltype,"_GO_enrichment.png"),plot = barp,width=4000,height = 2000,dpi = 300,units = "px")
+}
+```
+
+
+```{r}
+for (celltype in celltypes) {
+  cat(celltype,"\n")
+  GO_result <- GO_results[[celltype]]
+  
+  barp <- plotbar(GO_result)
+  ggsave(filename = paste0("../plot/",celltype,"_GO_enrichment.png"),plot = barp,width=4000,height = 2000,dpi = 300,units = "px")
+}
+```
+
+##barplot
+```{r}
+library(enrichplot)
+# ?enrichplot::barplot.enrichResult #查看barplot函数说明
+barplot(
+  KEGG_diff2, 
+  x= "Count", #or "GeneRatio"
+  color= "pvalue", #or "p.adjust", "qvalue"
+  showCategory= 20, #显示pathway的数量
+  font.size = 12, #字号
+  title= "KEGG enrichment barplot", #标题
+  label_format= 50 #pathway标签长度超过30个字符串换行
+)
+ggsave("../plot/GO barplot.png",width = 10,height = 10)
+```
+
+```{r}
+dotplot(
+  KEGG_diff2, 
+  x= "GeneRatio", 
+  color= "p.adjust",
+  showCategory= 20,
+  font.size = 12,
+  title= "Top 20 of Pathway Enrichment",
+  label_format= 30
+)
+ggsave("plot/KEGG dotplot.png",width = 10,height = 10)
+```

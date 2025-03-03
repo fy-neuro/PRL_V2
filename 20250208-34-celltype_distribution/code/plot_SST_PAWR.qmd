@@ -1,0 +1,199 @@
+##Begining 
+###packages
+
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+library(SeuratWrappers)
+```
+
+###jobname
+
+```{r}
+jobname<-"PRL_33"
+```
+
+###load data
+
+```{r}
+sobj<-readRDS("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20250123-24-Annotation-third-MNN/Documents/sobj_3rd_cleaned.rds")
+
+sobj$subcluster<- sobj$subcluster %>% as.character %>% as.factor
+```
+
+
+
+```{r}
+# 加载必要的包
+library(Seurat)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+
+# 假设你已经完成了以下预处理：
+# 1. sobj是已经完成注释的Seurat对象
+# 2. 元数据中包含以下列：
+#    - "class", "subclass", "subcluster"（细胞注释）
+#    - "sample"（样本ID，共15个）
+#    - "group"（分组信息，"Control"或"PD"）
+
+# 0. 提取GABAergic类细胞 ---------------------------------------------------------
+sobj.subset <- subset(sobj, class == "GABAergic")
+```
+
+###
+```{r}
+# 1. 绝对数量柱状图 --------------------------------------------------------
+# 计算每个样本中SST-PAWR的细胞数量
+cell_counts <- sobj.subset@meta.data %>%
+  group_by(orig.ident, Group) %>%
+  summarise(
+    total_cells = n(),
+    SST_PAWR = sum(subcluster == "SST-PAWR"),
+    PVALB_MEPE = sum(subcluster=="PVALB-MEPE")
+  ) %>%
+  ungroup()
+
+# 绘制绝对数量柱状图
+ggplot(cell_counts, aes(x = reorder(orig.ident, SST_PAWR), y = SST_PAWR, fill = Group)) +
+  geom_col() +
+  geom_text(aes(label = SST_PAWR), vjust = -0.3) +
+  scale_fill_manual(values = c("Control" = "#1f77b4", "PD" = "#ff7f0e")) +
+  labs(title = "SST_PAWR Absolute Counts per Sample",
+       x = "Sample ID", 
+       y = "Number of SST_PAWR Cells") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave("../plot/cellnumber_SST_PAWR.pdf")
+```
+
+
+```{r}
+# 2. 相对比例柱状图 --------------------------------------------------------
+# 计算每个样本中SST_PAWRP的比例
+prop_data <- cell_counts %>%
+  mutate(proportion = SST_PAWR / total_cells)
+
+# 绘制比例柱状图
+ggplot(prop_data, aes(x = reorder(orig.ident, proportion), y = proportion, fill = Group)) +
+  geom_col() +
+  geom_text(aes(label = scales::percent(proportion, accuracy = 0.1)), 
+            vjust = -0.3) +
+  scale_fill_manual(values = c("Control" = "#1f77b4", "PD" = "#ff7f0e")) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Proportion of SST-PAWR in GABAergic Population",
+       x = "Sample ID", 
+       y = "Proportion of SST-PAWR") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggsave("../plot/Proportion_SST-PAWR.pdf")
+```
+
+
+```{r}
+# 3. UMAP可视化 -----------------------------------------------------------
+# 创建分组颜色编码
+group_colors <- c("SST-PAWR" = "#e41a1c", "Other" = "#f0f0f0")
+
+# 生成可视化数据
+umap_data <- sobj.subset@meta.data %>%
+  mutate(subclass_highlight = ifelse(subcluster == "SST-PAWR", "SST-PAWR", "Other"))
+
+sobj.subset$subclass_highlight <- umap_data$subclass_highlight
+
+# 绘制UMAP
+DimPlot(sobj.subset, 
+        group.by = "subclass_highlight",
+        cols = group_colors,
+        pt.size = 0.5) +
+  ggtitle("UMAP of GABAergic Population Highlighting SST-PAWR") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+ggsave("../plot/UMAP_SST-PAWR.pdf")
+```
+
+```{r}
+# 加载统计相关包
+library(ggpubr)
+library(rstatix)
+
+# 先进行统计检验 -----------------------------------------------------------
+# 方法1：Mann-Whitney U检验（非参数检验，推荐用于小样本/非正态分布数据）
+stat_test <- prop_data %>%
+  wilcox_test(proportion ~ Group) %>%
+  add_significance() %>%
+  add_xy_position(x = "Group")
+
+# 方法2：T检验（参数检验，需要数据符合正态分布）
+# 先检查正态性假设
+shapiro_test <- prop_data %>% 
+  group_by(Group) %>% 
+  shapiro_test(proportion)
+# 如果两组数据均符合正态分布（p > 0.05），可以使用：
+# stat_test <- prop_data %>% 
+#   t_test(proportion ~ group) %>%
+#   add_significance() %>%
+#   add_xy_position(x = "group")
+
+# 绘制带统计检验的箱线图 ---------------------------------------------------
+ggplot(prop_data, aes(x = Group, y = proportion, fill = Group)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA) +
+  geom_jitter(width = 0.2, size = 3, alpha = 0.8) +
+  scale_fill_manual(values = c("Control" = "#1f77b4", "PD" = "#ff7f0e")) +
+  
+  # 添加统计检验结果
+  stat_pvalue_manual(
+    stat_test, 
+    label = "p = {p} ({p.signif})", # 同时显示p值和显著性符号
+    tip.length = 0.01,
+    bracket.size = 0.6,
+    label.size = 4
+  ) +
+  
+  # 扩展y轴空间给标注留位置
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2))) +
+  
+  labs(title = "Proportion Comparison Between Groups",
+       subtitle = "Mann-Whitney U Test",
+       x = "Group",
+       y = "Proportion of OPCs-MBP") +
+  theme_classic() +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold", size = 14),
+        axis.title = element_text(size = 12))
+```
+
+
+```{r}
+# 4. 其他可视化建议 --------------------------------------------------------
+# 4.1 分组箱线图（比较PD vs Control）
+ggplot(prop_data, aes(x = Group, y = proportion, fill = Group)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2, size = 2) +
+  scale_fill_manual(values = c("Control" = "#1f77b4", "PD" = "#ff7f0e")) +
+  labs(title = "Proportion Comparison Between Groups",
+       x = "Group",
+       y = "Proportion of SST-PAWR")
+ggsave("../plot/proportion_Group_SST-PAWR.pdf")
+```
+
+
+```{r}
+# 4.2 样本分面UMAP
+DimPlot(sobj.subset, 
+        group.by = "subclass_highlight",
+        split.by = "Group",
+        cols = group_colors,
+        pt.size = 0.5) +
+  ggtitle("Group-wise UMAP Comparison of SST-PAWR Distribution")
+ggsave("../plot/UMAP_Group_SST-PAWR.pdf")
+```

@@ -1,0 +1,150 @@
+##dendrogram
+```{r}
+Cairo::CairoPNG(filename = "../plot/Dendrogram.png",width = 5000,height = 3000,dpi = 800)
+PlotDendrogram(seurat_obj, main=' hdWGCNA Dendrogram')
+dev.off()
+```
+
+##Dotplot
+```{r}
+# plot with Seurat's DotPlot function
+p <- DotPlot(seurat_obj, features=mods, group.by = 'subclass')+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+# flip the x/y axes, rotate the axis labels, and change color scheme:
+p <- p +
+  RotatedAxis() +
+  scale_color_gradient2(high='red', mid='grey95', low='blue')
+
+# plot output
+p
+ggsave(filename = "../plot/Dotplot_subclass.png",plot = p,width = 16,height = 8)
+```
+
+##
+```{r}
+#制作每个模块的hMEs特征图
+plot_list<-ModuleFeaturePlot(
+  seurat_obj,
+  features='hMEs',#plotthehMEs
+  order=TRUE#ordersothepointswithhighesthMEsareontop
+)
+
+#stitchtogetherwithpatchwork
+wrap_plots(plot_list,ncol=5)
+ggsave("../plot/combinePlot.pdf",width=20,height=4)
+ggsave("../plot/moduleFeature.png",width = 5000,height = 3000,dpi = 300)
+
+Cairo::CairoPNG(filename = "../plot/moduleFeature.png",width = 5000,height = 3000,dpi = 300)
+wrap_plots(plot_list,ncol=5)
+dev.off()
+
+#制作每个模块的hubscores特征图
+plot_list<-ModuleFeaturePlot(
+seurat_obj,
+features='scores',#plotthehubgenescores
+order='shuffle',#ordersocellsareshuffled
+ucell=TRUE#dependingonSeuratvsUCellforgenescoring
+)
+#stitchtogetherwithpatchwork
+wrap_plots(plot_list,ncol=5)
+ggsave("../plot/hubscorePlot.pdf",width=20,height=4)
+Cairo::CairoPNG(filename = "../plot/hubscorePlot.png",width = 5000,height = 3000,dpi = 300)
+wrap_plots(plot_list,ncol=5)
+dev.off()
+
+# #每个模块在不同细胞亚群中的情况
+# seurat_obj$cluster<-do.call(rbind,strsplit(as.character(seurat_obj$subclass),''))[,1]
+# 
+# ModuleRadarPlot(
+# seurat_obj,
+# group.by='cluster',
+# barcodes=seurat_obj@meta.data%>%
+# subset(subclass=='SST')%>%
+# rownames(),
+# axis.label.size=4,
+# grid.label.size=4
+# )
+# ggsave("../plot/radarPlot.pdf",width=24,height=8)
+
+#查看模块相关图
+
+Cairo::CairoPNG(filename = "../plot/ModuleCorrelogram.png",width = 3000,height = 3000,dpi = 300)
+ModuleCorrelogram(seurat_obj)
+dev.off()
+
+```
+
+##Module Network
+```{r}
+#使用ModuleNetworkPlot可视化每个模块前50(数值可自定)的hubgene
+ ModuleNetworkPlot(
+  seurat_obj,
+  outdir='ModuleNetworks',#newfoldername
+  n_inner=20,#numberofgenesininnerring
+  n_outer=30,#numberofgenesinouterring
+  n_conns=Inf,#showalloftheconnections
+  plot_size=c(10,10),#largerplottingarea
+  vertex.label.cex=1#fontsize
+)
+```
+##hubgenenetwork
+没画出来
+```{r}
+#hubgenenetwork(基因数可自定)
+HubGeneNetworkPlot(
+  seurat_obj,
+  n_hubs=2,
+  n_other=2,
+  edge_prop=0.75,
+  mods='all'
+)
+
+
+#可以选择模块数
+g<-HubGeneNetworkPlot(seurat_obj,return_graph=TRUE)
+#getthelistofmodules:
+modules<-GetModules(seurat_obj)
+mods<-levels(modules$module);mods<-mods[mods!='grey']
+#hubgenenetwork
+HubGeneNetworkPlot(
+  seurat_obj,
+  n_hubs=2,
+  n_other=2,
+  edge_prop=0.75,
+  mods=mods[1:5]#onlyselect5modules
+)
+```
+
+```{r}
+seurat_obj<-RunModuleUMAP(
+  seurat_obj,
+  n_hubs=10,#numberofhubgenestoincludefortheUMAPembedding
+  n_neighbors=15,#neighborsparameterforUMAP
+  min_dist=0.1#mindistancebetweenpointsinUMAPspace
+)
+
+#getthehubgeneUMAPtablefromtheseuratobject
+umap_df<-GetModuleUMAP(seurat_obj)
+
+#plotwithggplot
+ggplot(umap_df,aes(x=UMAP1,y=UMAP2))+
+geom_point(
+  color=umap_df$color,#coloreachpointbyWGCNAmodule
+  size=umap_df$kME*2#sizeofeachpointbasedonintramodularconnectivity
+)+
+umap_theme()
+ggsave("../plot/ModuleUMAP.png")
+
+ModuleUMAPPlot(
+  seurat_obj,
+  edge.alpha=0.25,
+  sample_edges=TRUE,
+  edge_prop=0.1,#proportionofedgestosample(20%here)
+  label_hubs=2,#howmanyhubgenestoplotpermodule?
+  keep_grey_edges=FALSE
+)
+
+```
+

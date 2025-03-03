@@ -1,0 +1,115 @@
+```{r}
+# filter out doublets: DoubletFinder
+# setwd("~/Desktop/demo/single_cell_doublets/scripts")
+
+# load libraries
+library(Seurat)
+library(ggplot2)
+library(tidyverse)
+library(DoubletFinder)
+library(openxlsx)
+```
+
+##load data
+```{r}
+sobj
+```
+
+```{r}
+Datainfo<-read.xlsx("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20241230-1-QC_sample_info/Clinical Data.xlsx")
+
+info_use<-Datainfo %>%
+  filter(Sex!="NA") %>%
+  mutate(samplenum=as.numeric(gsub("[^0-9]", "", Sample))) %>%
+  arrange(samplenum)
+```
+
+```{r}
+Directory<-info_use$Directory %>% paste0("/")
+names(Directory)<-info_use$Sample
+Directory
+```
+```{r}
+i=i
+```
+
+
+```{r}
+
+for (i in 1: length(Directory)) {
+  cat("proceding",names(Directory)[i])
+sobj<-CreateSeuratObject(counts = Read10X(Directory[i]))
+
+
+sobj$mitoPercent <- PercentageFeatureSet(sobj, pattern = '^MT-')
+
+sobj.filtered <- subset(sobj, subset = nCount_RNA > 800 &
+         nFeature_RNA > 500 &
+         mitoPercent < 1)
+
+sobj
+sobj.filtered
+
+
+# pre-process standard workflow
+sobj.filtered <- NormalizeData(object = sobj.filtered)
+sobj.filtered <- FindVariableFeatures(object = sobj.filtered)
+sobj.filtered <- ScaleData(object = sobj.filtered)
+sobj.filtered <- RunPCA(object = sobj.filtered)
+ElbowPlot(sobj.filtered)
+sobj.filtered <- FindNeighbors(object = sobj.filtered, dims = 1:20)
+sobj.filtered <- FindClusters(object = sobj.filtered)
+sobj.filtered <- RunUMAP(object = sobj.filtered, dims = 1:20)
+
+
+
+
+## pK Identification (no ground-truth) ---------------------------------------------------------------------------------------
+sweep.res.list_pbmc <- paramSweep(sobj.filtered, PCs = 1:20, sct = FALSE)
+sweep.stats_pbmc <- summarizeSweep(sweep.res.list_pbmc, GT = FALSE)
+bcmvn_pbmc <- find.pK(sweep.stats_pbmc)
+
+PKplot<-ggplot(bcmvn_pbmc, aes(pK, BCmetric, group = 1)) +
+  geom_point() +
+  geom_line()
+ggsave(paste0("plot/",names(Directory)[i],"_Doublefinder.pdf"),plot = PKplot,width = 20,height = 8)
+
+pK <- bcmvn_pbmc %>% # select the pK that corresponds to max bcmvn to optimize doublet detection
+  filter(BCmetric == max(BCmetric)) %>%
+  select(pK) 
+pK <- as.numeric(as.character(pK[[1]]))
+
+
+## Homotypic Doublet Proportion Estimate -------------------------------------------------------------------------------------
+annotations <- sobj.filtered@meta.data$seurat_clusters
+homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+nExp_poi <- round(0.05*nrow(sobj.filtered@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
+nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+
+
+# run doubletFinder 
+sobj.filtered <- doubletFinder(sobj.filtered, 
+                                     PCs = 1:20, 
+                                     pN = 0.25, 
+                                     pK = pK, 
+                                     nExp = nExp_poi.adj,
+                                     reuse.pANN = FALSE, sct = FALSE)
+
+
+# visualize doublets
+meta_data <- sobj.filtered@meta.data
+
+names(meta_data)[length(meta_data)]
+UMAP_filter<-DimPlot(sobj.filtered, reduction = 'umap', group.by = names(meta_data)[length(meta_data)])
+ggsave(paste0("plot/",i,"_UMAP.pdf"),plot = UMAP_filter)
+
+saveRDS(sobj.filtered,paste0(names(Directory)[i],"_sobjfiltered.rds"))
+
+}
+
+# # number of singlets and doublets
+# table(sobj.filtered@meta.data$DF.classifications_0.25_0.26_691)
+
+
+```
+

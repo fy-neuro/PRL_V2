@@ -1,0 +1,81 @@
+##Begining 
+###packages
+
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+library(SeuratWrappers)
+```
+
+###jobname
+
+```{r}
+jobname<-"PRL_31"
+```
+
+###load data
+
+```{r}
+sobj<-readRDS("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20250123-24-Annotation-third-MNN/Documents/sobj_3rd_cleaned.rds")
+
+sobj$subcluster<- sobj$subcluster %>% as.character %>% as.factor
+```
+
+
+
+##modify data
+```{r}
+sobj.subsets<-list()
+celltypes<-levels(sobj$subcluster)
+```
+
+
+```{r}
+setsub<-function(sobj,celltype){
+  sobj.subset<-subset(sobj,subset=subcluster==celltype)
+  return(sobj.subset)
+}
+```
+
+```{r}
+for (celltype in celltypes) {
+  cat(celltype,"\n")
+  sobj.subset<-setsub(sobj = sobj,celltype = celltype)
+  sobj.subsets[[celltype]]<-sobj.subset
+}
+```
+
+##Group
+```{r}
+condition<-"Group"
+clustermarkers <- list()
+clustermarkers_top30 <- list()
+
+for (celltype in celltypes) {
+
+  cat(celltype,"\n")
+  sobj.subset <- sobj.subsets[[celltype]]
+  Idents(sobj.subset) <- condition
+  
+  sobj.Markers<-FindAllMarkers(sobj.subset,only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+  sobj.Markers %>%
+    group_by(cluster) %>%
+    top_n(n = 30, wt = avg_log2FC) -> top30
+      
+    clustermarkers[[celltype]]<-sobj.Markers
+    clustermarkers_top30[[celltype]]<-top30
+  }
+
+```
+##subcluster
+```{r}
+
+```
+

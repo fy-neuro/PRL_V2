@@ -1,0 +1,47 @@
+##job name
+```{r}
+Jobname<-"PRLV2_12"
+plot_path<-"../plots/"
+Document_path<-"../Documets/"
+```
+
+```{r}
+dir.create(plot_path)
+dir.create(Document_path)
+```
+##packages
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(openxlsx)
+library(tibble)
+```
+
+##load data
+```{r}
+sobj<-readRDS("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20241231-9-15sample_MNN/data/sobj_PD_MNN.rds")
+```
+
+##rename
+```{r}
+cellnumber<- read_csv("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20241231-10-Annotation-firstgrade-MNN/Documents/cellnumber.csv")
+sobj@active.ident<-sobj$RNA_snn_res.0.5
+
+cluster <- cellnumber$cluster
+class <- cellnumber$class
+names(class) <- cluster
+sobj <- RenameIdents(sobj, class)
+
+sobj$class<-sobj@active.ident
+```
+
+##rename doublets
+
+##saverds
+```{r}
+saveRDS(sobj,paste0(Document_path,"MNN_clean.rds"))
+```
+

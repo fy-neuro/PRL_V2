@@ -1,0 +1,239 @@
+##加载包
+```{r setup, include=FALSE}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(harmony)
+library(tibble)
+library(tidyverse)
+library(openxlsx)
+```
+
+##load data
+```{r}
+sobj <- readRDS("E:/PRL/20241230-4-15sample_QC/PRL_15sampleQC.rds")
+```
+
+```{r}
+library(Seurat)
+# library(SeuratData)
+# library(SeuratWrappers)
+library(patchwork)
+library(tidyverse)
+library(loupeR)
+
+# Command line arguments
+
+integration_method <- RPCAIntegration
+identifier <- 'rpca'
+
+# Print the parameters
+# cat("Integration Method:", integration_method, "\n")
+cat("Identifier:", identifier, "\n")
+
+# Construct the name for the new reduction
+reduction_name <- paste('integrated', identifier, sep = '.')
+
+# Print the new reduction name
+cat("Reduction Name:", reduction_name, "\n")
+
+# File paths
+dir.create("output")
+outRDS <- paste0("./output/sobj_PD_", identifier, ".rds")
+outPDF_QC <- paste0("./output/sobj_PD_", identifier, "_QC2.pdf")
+outPDF <- paste0("./output/sobj_PD_", identifier, ".pdf")
+outLoupe <- paste0("./output/louper_PD_", identifier)
+
+# Print file paths
+cat("Output RDS File:", outRDS, "\n")
+cat("Output QC PDF File:", outPDF_QC, "\n")
+cat("Output PDF File:", outPDF, "\n")
+cat("Output Loupe File:", outLoupe, "\n")
+```
+
+
+```{r}
+# Read the Seurat object
+# sobj <- readRDS("/storage/liuxiaodongLab/liuyifang/Projects/JialiPu/PD_QiuhanXu/2024-03-06_27-integrate-harmony/data/sobj_PD_before_integrate.rds")
+counts<-sobj@assays$RNA$counts
+meta<-sobj@meta.data
+sobj<-CreateSeuratObject(counts = counts,project ="PRL",meta.data = meta )
+
+sobj[["RNA"]]<-split(sobj[["RNA"]], f = sobj$orig.ident)
+
+sobj <- NormalizeData(sobj)
+sobj <- FindVariableFeatures(sobj)
+sobj <- ScaleData(sobj)
+sobj <- RunPCA(sobj)
+
+# Perform integration dynamically
+sobj <- IntegrateLayers(
+  object = sobj, method = integration_method,
+  new.reduction = reduction_name,
+  # assay = "RNA",
+  verbose = TRUE)
+
+# Re-join layers after integration
+sobj[["RNA"]] <- JoinLayers(sobj[["RNA"]])
+
+sobj <- FindNeighbors(sobj, reduction = reduction_name, dims = 1:30)
+sobj <- FindClusters(sobj, resolution = seq(0.1, 1, 0.1))
+sobj <- RunUMAP(sobj, dims = 1:30, reduction = reduction_name)
+
+# sobj <- RunTSNE(sobj, dims = 1:30,check_duplicates = FALSE)
+
+```
+
+```{r}
+saveRDS(sobj,outRDS)
+```
+##modify some variables
+```{r}
+Clinical_Data <- read.xlsx("E:/Prefrontal Cortex/Annotation/Clinical Data.xlsx")
+Dataadd<-Clinical_Data %>%
+  select(c(orig.ident,Freezing_gait,`onset-age`))
+
+Meta.X<-sobj@meta.data %>%
+  rownames_to_column(var = "barcodes")
+
+Meta.X<-Meta.X %>%
+  left_join(Dataadd,by="orig.ident") %>%
+  column_to_rownames(var = "barcodes")
+
+Meta.X<-Meta.X %>%
+  mutate_if(is.character,as.factor)
+
+sobj@meta.data<-Meta.X
+```
+
+
+##UMAP
+###0.1
+```{r}
+varuse<-"RNA_snn_res.0.1"
+Idents(sobj)<-varuse
+splitvar<-NULL
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        # ,cols=mycol
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_UMAP.png"),plot = UMAP_sample,device = "png",width=2500,height = 2000,dpi = 500,units = "px")
+```
+```{r}
+varuse<-"RNA_snn_res.0.1"
+Idents(sobj)<-varuse
+splitvar<-"Group"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        # ,cols=mycol
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_",splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=5000,height = 2000,dpi = 500,units = "px")
+```
+```{r}
+varuse<-"RNA_snn_res.0.1"
+Idents(sobj)<-varuse
+splitvar<-"Sex"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        # ,cols=mycol
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_",splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=5000,height = 2000,dpi = 500,units = "px")
+```
+```{r}
+varuse<-"RNA_snn_res.0.1"
+Idents(sobj)<-varuse
+splitvar<-"Hoehn-Yahr.Stage"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        # ,cols=mycol
+        ,split.by  = splitvar
+        ,label.size = 1
+        ,ncol = 2)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_",splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=5000,height = 4000,dpi = 500,units = "px")
+```
+```{r}
+varuse<-"RNA_snn_res.0.1"
+Idents(sobj)<-varuse
+splitvar<-"Freezing_gait"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        # ,cols=mycol
+        ,split.by  = splitvar
+        ,label.size = 1
+        ,ncol = 2)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_",splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=5000,height = 2000,dpi = 500,units = "px")
+```
+
+###orig.ident
+```{r}
+varuse<-"orig.ident"
+Idents(sobj)<-varuse
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        # ,cols=mycol
+        # ,split.by  = 'Group'
+        ,label.size = 1)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_UMAP.png"),plot = UMAP_sample,device = "png",width=2500,height = 2000,dpi = 500,units = "px")
+```
+```{r}
+varuse<-"orig.ident"
+Idents(sobj)<-varuse
+splitvar<-"Group"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        # ,cols=mycol
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_",splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=5000,height = 2000,dpi = 500,units = "px")
+```
+```{r}
+varuse<-"orig.ident"
+Idents(sobj)<-varuse
+splitvar<-"Sex"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        # ,cols=mycol
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_",splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=5000,height = 2000,dpi = 500,units = "px")
+```
+```{r}
+varuse<-"orig.ident"
+Idents(sobj)<-varuse
+splitvar<-"Freezing_gait"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        # ,cols=mycol
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_",splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=5000,height = 2000,dpi = 500,units = "px")
+```
+```{r}
+varuse<-"orig.ident"
+Idents(sobj)<-varuse
+splitvar<-"Hoehn-Yahr.Stage"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        # ,cols=mycol
+        ,split.by  = splitvar
+        ,label.size = 1
+        ,ncol = 2)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_",splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=5000,height = 4000,dpi = 500,units = "px")
+```
+
+```{r}
+varuse<-"RNA_snn_res.0.1"
+Idents(sobj)<-varuse
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        # ,cols=mycol
+        ,split.by  = 'orig.ident'
+        ,label.size = 1
+        ,ncol = 4)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"orig.ident_UMAP.png"),plot = UMAP_sample,device = "png",width=4000,height = 4000,dpi = 200,units = "px")
+```
+
+##Featureplot
+```{r}
+Markers<-Markers_all
+Feaplot<-FeaturePlot(sobj,features = Markers
+            ,ncol = 5
+            )
+ggsave(filename = paste0("plot/featureplot.png"),plot = Feaplot,device = "png",width=6000,height = 7000,dpi = 300,units = "px")
+```
+

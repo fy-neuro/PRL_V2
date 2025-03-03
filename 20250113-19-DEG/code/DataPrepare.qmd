@@ -1,0 +1,52 @@
+##Begining 
+###packages
+
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+library(SeuratWrappers)
+```
+
+###jobname
+
+```{r}
+jobname<-"PRL_19"
+```
+
+###load data
+
+```{r}
+sobj<-readRDS("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20250104-15-Annotation-secondgrade/Documents/sobj_2ndAnnotation.rds")
+```
+
+
+
+##modify data
+```{r}
+sobj.subsets<-list()
+celltypes<-levels(sobj$subclass)
+```
+
+
+```{r}
+setsub<-function(sobj,celltype){
+  sobj.subset<-subset(sobj,subset=subclass==celltype)
+  return(sobj.subset)
+}
+```
+
+```{r}
+for (celltype in celltypes) {
+  cat(celltype,"\n")
+  sobj.subset<-setsub(sobj = sobj,celltype = celltype)
+  sobj.subsets[[celltype]]<-sobj.subset
+}
+```
+

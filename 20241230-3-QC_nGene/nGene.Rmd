@@ -1,0 +1,141 @@
+
+```{r}
+
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(openxlsx)
+library(tibble)
+library(ggplot2)
+```
+
+##load data
+```{r}
+sobj<-readRDS("E:/PRL/20241230-1-QC_sample_info/PRL_allsample.rds")
+```
+##calculate mt
+```{r}
+sobj$percent.mt <- PercentageFeatureSet(sobj, pattern = "^MT-")
+summary(sobj$percent.mt)
+#鼠使用mt
+```
+
+##modify variable
+```{r}
+Meta.X<-sobj@meta.data
+Meta.X$orig.ident<-factor(Meta.X$orig.ident,levels = c("P1SXZ" , "P2LM"  , "P3MLR" , "P4CZZ" ,"P5DGJ", "P6ZJR" , "P7WL" ,  "P8FYD",  "P9TJR","P10CLW" ,"P11XAF" ,"P12LBS" ,"P13WJR", "P14ZQM" ,"P15ZHM", "P16RMQ", "P17BMH" ,"P18DJX"))
+samplelist<-levels(Meta.X$orig.ident)
+```
+
+
+##plot.mt
+```{r}
+for (sample in samplelist) {
+  
+  dataplot<-Meta.X %>%
+    filter(orig.ident==sample)
+  Density_mt<-ggplot(dataplot, aes(x=percent.mt, fill=orig.ident)) +
+  geom_density()+
+  ylim(0,4)+
+  xlim(0,3)
+  ggsave(filename = paste0("plot/",sample,"_Density_mt.png"),plot = Density_mt,device = "png",width=3000,height = 2000,dpi = 300,units = "px")
+}
+
+  Density_mt<-ggplot(Meta.X, aes(x=percent.mt, fill=orig.ident)) +
+  geom_density()+
+  ylim(0,3)+
+  xlim(0,3)
+  ggsave(filename = paste0("plot/","_Density_mt.png"),plot = Density_mt,device = "png",width=3000,height = 2000,dpi = 300,units = "px")
+```
+##plot.nFeature
+```{r}
+# Meta.X<-sobj@meta.data
+# Meta.X$orig.ident<-factor(Meta.X$orig.ident,levels = c("P1SXZ" , "P2LM"  , "P3MLR" , "P4CZZ" ,"P5DGJ", "P6ZJR" , "P7WL" ,  "P8FYD",  "P9TJR","P10CLW" ,"P11XAF" ,"P12LBS" ,"P13WJR", "P14ZQM" ,"P15ZHM", "P16RMQ", "P17BMH" ,"P18DJX"))
+# samplelist<-levels(Meta.X$orig.ident)
+
+
+for (sample in samplelist) {
+  
+  dataplot<-Meta.X %>%
+    filter(orig.ident==sample)
+  Density_mt<-ggplot(dataplot, aes(x=nFeature_RNA, fill=orig.ident)) +
+  geom_density()
+  ggsave(filename = paste0("plot_feature/",sample,"_Density_feature.png"),plot = Density_mt,device = "png",width=3000,height = 2000,dpi = 300,units = "px")
+}
+
+  Density_mt<-ggplot(Meta.X, aes(x=nFeature_RNA, fill=orig.ident)) +
+  geom_density()
+  ggsave(filename = paste0("plot_feature/","_Density_feature.png"),plot = Density_mt,device = "png",width=3000,height = 2000,dpi = 300,units = "px")
+```
+##plot.nCount
+```{r}
+# Meta.X<-sobj@meta.data
+# Meta.X$orig.ident<-factor(Meta.X$orig.ident,levels = c("P1SXZ" , "P2LM"  , "P3MLR" , "P4CZZ" ,"P5DGJ", "P6ZJR" , "P7WL" ,  "P8FYD",  "P9TJR","P10CLW" ,"P11XAF" ,"P12LBS" ,"P13WJR", "P14ZQM" ,"P15ZHM", "P16RMQ", "P17BMH" ,"P18DJX"))
+# samplelist<-levels(Meta.X$orig.ident)
+
+
+for (sample in samplelist) {
+  
+  dataplot<-Meta.X %>%
+    filter(orig.ident==sample)
+  Density_mt<-ggplot(dataplot, aes(x=nCount_RNA, fill=orig.ident)) +
+  geom_density()+
+    ylim(0,0.00025)
+  ggsave(filename = paste0("plot_count/",sample,"_Density_count.png"),plot = Density_mt,device = "png",width=3000,height = 2000,dpi = 300,units = "px")
+}
+
+  Density_mt<-ggplot(Meta.X, aes(x=nCount_RNA, fill=orig.ident)) +
+  geom_density()
+  ggsave(filename = paste0("plot_count/","_Density_count.png"),plot = Density_mt,device = "png",width=3000,height = 2000,dpi = 300,units = "px")
+```
+##calculate decrease rate
+```{r}
+sobj.filtered <- subset(sobj, subset = nFeature_RNA > 200 & nFeature_RNA < 7000 & percent.mt < 1)
+
+sobj.filtered
+table(sobj$orig.ident)
+table(sobj.filtered$orig.ident)
+QCnumber<-cbind(table(sobj$orig.ident),table(sobj.filtered$orig.ident)) %>%as.data.frame
+names(QCnumber)<-c("before_QC","after_QC")
+
+QCnumber<-QCnumber %>%
+  mutate(percentagecut=(after_QC-before_QC)/before_QC *100)
+write.csv(QCnumber,"QCnumber_mt1.csv")
+```
+
+```{r}
+
+sobj.filtered <- subset(sobj, subset = nFeature_RNA > 200 & nFeature_RNA < 7000 & percent.mt < 0.6)
+
+sobj.filtered
+table(sobj$orig.ident)
+table(sobj.filtered$orig.ident)
+QCnumber<-cbind(table(sobj$orig.ident),table(sobj.filtered$orig.ident)) %>%as.data.frame
+names(QCnumber)<-c("before_QC","after_QC")
+
+QCnumber<-QCnumber %>%
+  mutate(percentagecut=(after_QC-before_QC)/before_QC *100)
+write.csv(QCnumber,"QCnumber_mt0.6.csv")
+```
+
+```{r}
+
+sobj.filter <- subset(sobj, subset = nFeature_RNA > 200 & nFeature_RNA < 7000 & percent.mt < 0.1)
+
+sobj.filter
+table(sobj$orig.ident)
+table(sobj.filter$orig.ident)
+QCnumber<-cbind(table(sobj$orig.ident),table(sobj.filter$orig.ident)) %>%as.data.frame
+names(QCnumber)<-c("before_QC","after_QC")
+
+QCnumber<-QCnumber %>%
+  mutate(percentagecut=(after_QC-before_QC)/before_QC *100)
+write.csv(QCnumber,"QCnumber_mt0.1.csv")
+```
+##savedata
+```{r}
+saveRDS(sobj,"PRL_18sample.rds")
+```
+

@@ -1,0 +1,148 @@
+/storage/liuxiaodongLab/fanyi/FY/PRL/Clinical Data.xlsx
+
+
+##packages
+```{r 初始化}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(openxlsx)
+library(tibble)
+```
+
+##load data
+```{r}
+filelist<-list.dirs("/storage/liuxiaodongLab/fanyi/FY/PRL/Data")
+write.csv(filelist,"filelist.csv")
+```
+
+
+```{r}
+Datainfo<-read.xlsx("Clinical Data.xlsx")
+
+info_use<-Datainfo %>%
+  filter(Sex!="NA") %>%
+  mutate(samplenum=as.numeric(gsub("[^0-9]", "", Sample))) %>%
+  arrange(samplenum)
+```
+
+```{r}
+Directory<-info_use$Directory %>% paste0("/")
+names(Directory)<-info_use$Sample
+Directory
+```
+
+```{r}
+sobj<-CreateSeuratObject(counts = Read10X(Directory),project = "PRL")
+```
+
+```{r}
+Meta.X<-sobj@meta.data %>%
+  rownames_to_column(var = "barcodes")
+
+info_use<-info_use %>%
+  mutate(orig.ident=Sample)
+Meta.X<-Meta.X %>%
+  left_join(info_use,by="orig.ident") %>%
+  column_to_rownames(var = "barcodes")
+
+Meta.X<-Meta.X %>%
+  mutate_if(is.character,as.factor)
+
+sobj@meta.data<-Meta.X
+```
+
+##Number of Cells
+```{r}
+library(tidyplots)
+library(ggplot2)
+```
+
+```{r}
+Dataplot<-Meta.X %>%
+  group_by(orig.ident)%>%
+  summarise(
+    number = n(),
+    mean.reads=mean(nCount_RNA),
+    median.reads=median(nCount_RNA)
+  )%>% as.data.frame %>%
+  left_join(info_use,by="orig.ident") %>%
+  mutate_if(is.character,as.factor) %>%
+  arrange(samplenum)
+
+levels(Dataplot$orig.ident)
+```
+
+```{r}
+Dataplot$orig.ident<-factor(Dataplot$orig.ident,levels = c("P1SXZ" , "P2LM"  , "P3MLR" , "P4CZZ" ,"P5DGJ", "P6ZJR" , "P7WL" ,  "P8FYD",  "P9TJR","P10CLW" ,"P11XAF" ,"P12LBS" ,"P13WJR", "P14ZQM" ,"P15ZHM", "P16RMQ", "P17BMH" ,"P18DJX"))
+Dataplot$`Hoehn-Yahr.Stage`<-Dataplot$`Hoehn-Yahr.Stage` %>%as.factor
+```
+
+
+##cellnumber
+```{r}
+Dataplot %>%
+  tidyplot(x=orig.ident,y=number,fill=Sex) %>%
+  add_mean_bar(alpha = 0.4)+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+ggsave(filename = "plot/cellnumber_sex.pdf")
+```
+```{r}
+
+cellnumeber<-Dataplot %>%
+  tidyplot(x=orig.ident,y=number,fill=`Hoehn-Yahr.Stage`) %>%
+  add_mean_bar(alpha = 0.4)+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave(filename = "plot/cellnumber_HY.pdf",width = 20,height = 8)
+```
+```{r}
+cellnumeber<-Dataplot %>%
+  tidyplot(x=orig.ident,y=number,fill=Age) %>%
+  add_mean_bar(alpha = 0.4)+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave(filename = "plot/cellnumber_age.pdf",width = 20,height = 8)
+```
+
+##cellnumber
+```{r}
+Dataplot %>%
+  tidyplot(x=orig.ident,y=number,fill=Sex) %>%
+  add_mean_bar(alpha = 0.4) %>% 
+  adjust_title("Cellnumber per sample") %>%
+  adjust_x_axis_title("Sample") %>%
+  adjust_y_axis_title("Number of Cells") %>%
+  adjust_x_axis(rotate_labels = 45) %>%
+  adjust_size(width = 100,height = 50) %>%
+  save_plot("plot/cellnumber_sex.png")
+ggsave(filename = "plot/cellnumber_sex.pdf")
+```
+```{r}
+
+Dataplot %>%
+  tidyplot(x=orig.ident,y=number,fill=`Hoehn-Yahr.Stage`) %>%
+  add_mean_bar(alpha = 0.4) %>% 
+  adjust_title("Cellnumber per sample") %>%
+  adjust_x_axis_title("Sample") %>%
+  adjust_y_axis_title("Number of Cells") %>%
+  adjust_x_axis(rotate_labels = 45) %>%
+  adjust_size(width = 100,height = 50)%>%
+  save_plot("plot/cellnumber_HY.png")
+ggsave(filename = "plot/cellnumber_HY.pdf")
+```
+```{r}
+
+Dataplot %>%
+  tidyplot(x=orig.ident,y=number,fill=Age) %>%
+  add_mean_bar(alpha = 0.4) %>% 
+  adjust_title("Cellnumber per sample") %>%
+  adjust_x_axis_title("Sample") %>%
+  adjust_y_axis_title("Number of Cells") %>%
+  adjust_x_axis(rotate_labels = 45) %>%
+  adjust_size(width = 100,height = 50)%>%
+  save_plot("plot/cellnumber_HY.png")
+ggsave(filename = "plot/cellnumber_age.pdf")
+```
+
+

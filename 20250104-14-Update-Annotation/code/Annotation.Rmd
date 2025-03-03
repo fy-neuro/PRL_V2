@@ -1,0 +1,77 @@
+##packages
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+```
+
+##jobname
+```{r}
+jobname<-"PRL_14"
+```
+
+##load data
+```{r}
+sobj<-readRDS("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20250103-13-UMAP+Marker plot-after_DropDoublets/Documents/sobj_PD_MNN.rds")
+```
+##modify  OPC
+```{r}
+OPC_barcodes<-read.csv("../Documents/OPCs.csv")
+Meta.X<-sobj@meta.data %>%
+  rownames_to_column(var = "barcode")
+
+Meta.X<-Meta.X %>%
+  mutate(class=as.character(class)) %>%
+  mutate(class=ifelse(barcode %in% OPC_barcodes$Barcode,"OPCs",class)) %>%
+  mutate(class=as.factor(class)) %>%
+  column_to_rownames(var = "barcode")
+```
+
+```{r}
+sobj@meta.data<-Meta.X
+```
+
+##modify BAM
+BAM混在了Tcell中
+```{r}
+BAM_barcodes<-read.csv("../Documents/BAM.csv")
+Meta.X<-sobj@meta.data %>%
+  rownames_to_column(var = "barcode")
+
+Meta.X<-Meta.X %>%
+  mutate(class=as.character(class)) %>%
+  mutate(class=ifelse(barcode %in% BAM_barcodes$Barcode,"BAM",class)) %>%
+  mutate(class=as.factor(class)) %>%
+  column_to_rownames(var = "barcode")
+```
+
+```{r}
+sobj@meta.data<-Meta.X
+```
+
+##modify microglia
+```{r}
+
+levels(sobj$class)[5]<-"Microglia"
+```
+##modify variabels
+```{r}
+sobj$subclass<-sobj$class
+levels(sobj$class)
+levels(sobj$class)[c(2,5,8)]<-"Immunocytes"
+```
+
+
+##save
+```{r}
+saveRDS(sobj,"../Documents/sobj_1stannotation.rds")
+output_loupe<-"../Documents/PD_1stannotation"
+create_loupe_from_seurat(sobj,output_name = output_loupe)
+```
+

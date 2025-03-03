@@ -1,0 +1,166 @@
+##Begining 
+###packages
+
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+library(SeuratWrappers)
+```
+
+###jobname
+
+```{r}
+jobname<-"PRL_17"
+```
+
+###load data
+
+```{r}
+sobj<-readRDS("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20250104-15-Annotation-secondgrade/Documents/sobj_2ndAnnotation.rds")
+```
+
+##UMAP
+##UMAP-class
+```{r}
+mycol1<-c( "#A6CEE3" , "#6A3D9A", "#B2DF8A" ,"#33A02C", "#FB9A99" ,"#FF7F00", "#FDBF6F","#E31A1C"  ,
+           "#CAB2D6", "#FFFF99","#B15928","#1F78B4")
+levels(sobj$class)
+varuse<-"class"
+Idents(sobj)<-varuse
+splitvar<-NULL
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        ,cols=mycol1
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("../plot/",varuse,"_UMAP.png"),plot = UMAP_sample,device = "png",width=3000,height = 2500,dpi = 300,units = "px")
+```
+###Group
+```{r}
+mycol1<-c( "#A6CEE3" , "#6A3D9A", "#B2DF8A" ,"#33A02C", "#FB9A99" ,"#FF7F00", "#FDBF6F","#E31A1C"  ,
+           "#CAB2D6", "#FFFF99","#B15928","#1F78B4")
+levels(sobj$class)
+varuse<-"class"
+Idents(sobj)<-varuse
+splitvar<-"Group"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        ,cols=mycol1
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("../plot/",varuse,splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=5000,height = 2500,dpi = 300,units = "px")
+```
+###Freezing
+```{r}
+mycol1<-c( "#A6CEE3" , "#6A3D9A", "#B2DF8A" ,"#33A02C", "#FB9A99" ,"#FF7F00", "#FDBF6F","#E31A1C"  ,
+           "#CAB2D6", "#FFFF99","#B15928","#1F78B4")
+levels(sobj$class)
+varuse<-"class"
+Idents(sobj)<-varuse
+splitvar<-"Freezing_gait"
+# sobj$Freezing_gait<-sobj$Freezing_gait %>%factor(levels = c("Freezing","Non","NA"))
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        ,cols=mycol1
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("../plot/",varuse,splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=7000,height = 2500,dpi = 300,units = "px")
+```
+###H_Y_stage
+```{r}
+mycol1<-c( "#A6CEE3" , "#6A3D9A", "#B2DF8A" ,"#33A02C", "#FB9A99" ,"#FF7F00", "#FDBF6F","#E31A1C"  ,
+           "#CAB2D6", "#FFFF99","#B15928","#1F78B4")
+varuse<-"class"
+Idents(sobj)<-varuse
+splitvar<-"Stage"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        ,cols=mycol1
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("../plot/",varuse,splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=7000,height = 2500,dpi = 300,units = "px")
+```
+
+##UMAP-subclass
+```{r}
+color<-c("#00468B","#925E9F","#759EDD","#0099B4","#76D1B1","#42B540","#B8D24D",
+         "#EDE447","#FAB158","#FF7777","#FD0000","#AD002A","#AE8691","#CE9573",
+         "#756455","#005EEC","#009BB1",'#FD1651', "#F28E2B", "#FFBE7D", "#59A14F" ,"#8CD17D" ,"#B6992D" ,"#F1CE63" ,"#499894","#86BCB6", "#E15759")
+varuse<-"subclass"
+Idents(sobj)<-varuse
+splitvar<-NULL
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        ,cols=color
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("../plot/",varuse,"_UMAP.png"),plot = UMAP_sample,device = "png",width=3000,height = 2500,dpi = 300,units = "px")
+```
+###Freezing
+```{r}
+color<-c("#00468B","#925E9F","#759EDD","#0099B4","#76D1B1","#42B540","#B8D24D",
+         "#EDE447","#FAB158","#FF7777","#FD0000","#AD002A","#AE8691","#CE9573",
+         "#756455","#005EEC","#009BB1",'#FD1651', "#F28E2B", "#FFBE7D", "#59A14F" ,"#8CD17D" ,"#B6992D" ,"#F1CE63" ,"#499894","#86BCB6", "#E15759")
+varuse<-"subclass"
+Idents(sobj)<-varuse
+splitvar<-"Freezing_gait"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        ,cols=color
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("../plot/",varuse,splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=7000,height = 2500,dpi = 300,units = "px")
+```
+
+###Stage
+```{r}
+color<-c("#00468B","#925E9F","#759EDD","#0099B4","#76D1B1","#42B540","#B8D24D",
+         "#EDE447","#FAB158","#FF7777","#FD0000","#AD002A","#AE8691","#CE9573",
+         "#756455","#005EEC","#009BB1",'#FD1651', "#F28E2B", "#FFBE7D", "#59A14F" ,"#8CD17D" ,"#B6992D" ,"#F1CE63" ,"#499894", "#86BCB6", "#E15759")
+varuse<-"subclass"
+Idents(sobj)<-varuse
+splitvar<-"Stage"
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        ,cols=color
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("../plot/",varuse,splitvar,"_UMAP.png"),plot = UMAP_sample,device = "png",width=7000,height = 2500,dpi = 300,units = "px")
+```
+
+##Heatmap
+```{r}
+Markers_all<-c(
+  'RALYL','LDB2','NELL2'
+  #Glutamatergic Neuron	
+  ,'GAD1','GRIP1','GAD2','SLC6A1'
+  #GABAergic Neuron	
+  ,'PDGFRA','VCAN','OLIG1'
+  # OPC
+  ,'MBP','MOBP','MOG',"OPALIN"
+  # OLIGO
+  ,'AQP4','GFAP','FGFR3',"NHSL1","SLC25A18"
+  # ASTRO
+  ,  'CD2','THEMIS','CD3D'
+   # T CELL
+  ,'ITGAM','CD74','CX3CR1','P2RY12',"C3","CSF1R"
+  # MICRO 
+  ,"CD163","CD206","LYVE1","MRC1"
+  #BAM
+  ,'DCN','FLT1',"LEF1","VWF"
+  # VC
+)
+```
+
+```{r}
+Idents(sobj)<-"class"
+sobj.scale<-ScaleData(subset(sobj,downsample=200),features=Markers_all)
+Heatmap<-DoHeatmap(sobj.scale
+                   ,features = Markers_all
+                   # ,group.colors = mycol
+                   ) + 
+  scale_fill_gradientn(colors = c("white","grey","firebrick3"))+
+  NoLegend()
+ggsave(filename =  paste0("../plot/","_Heatmap",".png"),device = "png",width=2500,height = 2000,dpi = 300,units = "px")
+```
+

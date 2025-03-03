@@ -1,0 +1,117 @@
+```{r}
+
+```
+
+```{r}
+
+```
+
+###Dotplot
+```{r}
+varuse<-"class"
+Idents(sobj)<-varuse
+Dotplot_re0.5<-DotPlot(sobj,features = Markers_all,dot.scale = 5
+        # ,idents=c("Glutamatergic Neurons","GABAergic Neurons","Astrocytes","Micro-PVM","Oligos","OPCs","Endo-Pericytes","Tcells")
+        ,cluster.idents = TRUE
+        )+
+  coord_flip()+
+  scale_colour_binned_c4a_div('kovesi.div_bu_wh_rd2')+ 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) 
+ggsave(filename ="plot/Dotplot_.png",plot = Dotplot_re0.5,device = "png",width=2500,height = 3000,dpi = 400,units = "px" )
+ggsave(filename ="plot/Dotplot_.pdf",plot = Dotplot_re0.5,device = "pdf",width=2500,height = 3000,dpi = 400,units = "px" )
+```
+
+###cellratio
+```{r plot}
+mycol4<-c4a('brewer.pastel1',7)
+mycol4<-c("#FBB4AE" ,"#B3CDE3" ,"#CCEBC5" ,"#DECBE4" ,"#FED9A6" ,"#FFFFCC" ,"#E5D8BD")
+
+mycol3<-c4a('brewer.accent',7)
+cell_number<-(prop.table(table(sobj$class,sobj$Group),margin = 2)*100)%>%
+  round(digits = 2)
+cell_number<-as.data.frame(cell_number)
+colnames(cell_number)<-c('celltype','Group','percentage')
+
+# cell_number<-cell_number %>%
+#   filter(orig.ident %in% c("a53t12","a53t4","wt12c","DY6")) %>%
+#   filter(celltype  !="Shallow")
+
+p <- ggplot(cell_number, aes(x = celltype, #给一个数值向量作为柱子x轴的中心坐标
+                            y = percentage,
+                            fill = Group  )) + #将颜色映射到celltype
+  geom_bar(position = "dodge", stat="identity", color = NA, width = 0.8)
+# geom_col(width = 1.5, #柱形图柱子宽度
+#          color = 'white') 
+p
+
+p1<-p+scale_fill_manual(values = mycol4) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme_classic()
+p1
+
+ggsave(filename =paste0("plot/","_Cellratio_class.png"),plot = p1,device = "png",width=4500,height = 2500,dpi = 400,units = "px" )
+ggsave(filename =paste0("plot/","_Cellratio_class.pdf"),plot = p1,device = "pdf",width=4500,height = 2500,dpi = 400,units = "px" )
+```
+
+###cellratio_stack_group
+```{r plot}
+mycol4<-c4a('brewer.pastel1',7)
+mycol4<-c("#FBB4AE" ,"#B3CDE3" ,"#CCEBC5" ,"#DECBE4" ,"#FED9A6" ,"#FFFFCC" ,"#E5D8BD")
+
+mycol3<-c4a('brewer.accent',7)
+cell_number<-(prop.table(table(sobj$class,sobj$Group),margin = 2)*100)%>%
+  round(digits = 2)
+cell_number<-as.data.frame(cell_number)
+colnames(cell_number)<-c('celltype','Group','percentage')
+
+# cell_number<-cell_number %>%
+#   filter(orig.ident %in% c("a53t12","a53t4","wt12c","DY6")) %>%
+#   filter(celltype  !="Shallow")
+
+p <- ggplot(cell_number, aes(x = Group, #给一个数值向量作为柱子x轴的中心坐标
+                            y = percentage,
+                            fill = celltype  )) + #将颜色映射到celltype
+  geom_bar(position = "stack", stat="identity", color = NA, width = 0.8)
+# geom_col(width = 1.5, #柱形图柱子宽度
+#          color = 'white') 
+p
+
+p1<-p+scale_fill_manual(values = mycol1) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme_classic()
+p1
+
+ggsave(filename =paste0("plot/","_Cellratio_class_stack.png"),plot = p1,device = "png",width=2000,height = 2000,dpi = 200,units = "px" )
+ggsave(filename =paste0("plot/","_Cellratio_class_stack.pdf"),plot = p1,device = "pdf",width=2000,height = 2000,dpi = 200,units = "px" )
+```
+###cellratio_stack_sample
+```{r plot}
+mycol4<-c4a('brewer.pastel1',7)
+mycol4<-c("#FBB4AE" ,"#B3CDE3" ,"#CCEBC5" ,"#DECBE4" ,"#FED9A6" ,"#FFFFCC" ,"#E5D8BD")
+
+mycol3<-c4a('brewer.accent',7)
+cell_number<-(prop.table(table(sobj$class,sobj$orig.ident),margin = 2)*100)%>%
+  round(digits = 2)
+cell_number<-as.data.frame(cell_number)
+colnames(cell_number)<-c('celltype','Group','percentage')
+
+# cell_number<-cell_number %>%
+#   filter(orig.ident %in% c("a53t12","a53t4","wt12c","DY6")) %>%
+#   filter(celltype  !="Shallow")
+
+p <- ggplot(cell_number, aes(x = Group, #给一个数值向量作为柱子x轴的中心坐标
+                            y = percentage,
+                            fill = celltype  )) + #将颜色映射到celltype
+  geom_bar(position = "stack", stat="identity", color = NA, width = 0.8)
+# geom_col(width = 1.5, #柱形图柱子宽度
+#          color = 'white') 
+p
+
+p1<-p+scale_fill_manual(values = mycol1) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme_classic()
+p1
+
+ggsave(filename =paste0("plot/","_Cellratio_class_sample_stack.png"),plot = p1,device = "png",width=4500,height = 2500,dpi = 400,units = "px" )
+ggsave(filename =paste0("plot/","_Cellratio_class_sample_stack.pdf"),plot = p1,device = "pdf",width=4500,height = 2500,dpi = 400,units = "px" )
+```

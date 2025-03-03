@@ -1,0 +1,57 @@
+##Begining 
+###packages
+
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+library(SeuratWrappers)
+library(monocle3)
+```
+
+###jobname
+
+```{r}
+jobname<-"PRL_18"
+```
+
+###load data
+
+```{r}
+sobj<-readRDS("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20250104-15-Annotation-secondgrade/Documents/sobj_2ndAnnotation.rds")
+```
+
+
+##modify data
+```{r}
+sobj.subsets<-list()
+
+sobj$celltypes<-sobj$class
+levels(sobj$celltypes)<-c("GABAergic","Glutamatergic","Astrocytes","Microglia","T cells","BAMs","Oligos","Oligos","Vascular")
+
+
+celltypes<-c("GABAergic","Glutamatergic","Astrocytes","Microglia","Oligos")
+```
+
+```{r}
+setsub<-function(sobj,celltype){
+  sobj.subset<-subset(sobj,subset=celltypes==celltype)
+  
+  return(sobj.subset)
+}
+```
+
+```{r}
+for (celltype in celltypes) {
+  sobj.subset<-subset(sobj,subset=celltypes==celltype)
+  
+  sobj.subsets[[celltype]]<-sobj.subset
+}
+```
+

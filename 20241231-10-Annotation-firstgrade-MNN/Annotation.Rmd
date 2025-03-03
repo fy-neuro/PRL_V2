@@ -1,0 +1,148 @@
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+```
+
+```{r}
+dir.create("Documents")
+```
+
+
+```{r}
+sobj<-readRDS("../20241231-9-15sample_MNN/data/sobj_PD_MNN.rds")
+```
+
+```{r}
+sobj <- RunUMAP(sobj, dims = 1:20, reduction = reduction_name)
+```
+
+###导出分组情况
+```{r}
+# dir.create("Documents")
+cellnumber<-data.frame(cluster=levels(sobj$RNA_snn_res.0.5)) %>% arrange %>%
+  mutate(class="",subclass="",subcluster="")
+write_csv(cellnumber,"Documents/cellnumber.csv")
+```
+
+###Export marker
+```{r QC,analysis}
+varuse<-"RNA_snn_res.0.5"
+Idents(sobj)<-varuse
+sobj.Markers<-FindAllMarkers(sobj,only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+sobj.Markers %>%
+  group_by(cluster) %>%
+  top_n(n = 30, wt = avg_log2FC) -> top30
+
+write.xlsx(top30, file = paste0("Documents/",varuse,"_Top30.xlsx"))
+write.xlsx(sobj.Markers, file = paste0("Documents/",varuse,".xlsx"))
+
+
+```
+###UMAP
+```{r}
+varuse<-"RNA_snn_res.0.5"
+Idents(sobj)<-varuse
+splitvar<-NULL
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = TRUE
+        # ,cols=mycol
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_UMAP.png"),plot = UMAP_sample,device = "png",width=2500,height = 2000,dpi = 500,units = "px")
+```
+##set Marker
+```{r}
+Markers_all<-c(
+  'RALYL','LDB2','NELL2'
+  #Glutamatergic Neuron	
+  ,'GAD1','GRIP1','GAD2','SLC6A1'
+  #GABAergic Neuron	
+  ,'PDGFRA','VCAN','OLIG1'
+  # OPC
+  ,'MBP','MOBP','MOG',"OPALIN"
+  # OLIGO
+  ,'AQP4','GFAP','FGFR3',"NHSL1","SLC25A18"
+  # ASTRO
+  ,  'CD2','THEMIS','CD3D'
+   # T CELL
+  ,'ITGAM','CD74','CX3CR1','P2RY12',"C3","CSF1R"
+  # MICRO 
+  ,'DCN','FLT1',"LEF1","VWF"
+  # VC
+)
+```
+###Dotplot
+```{r}
+varuse<-"RNA_snn_res.0.5"
+Idents(sobj)<-varuse
+Dotplot_re0.5<-DotPlot(sobj,features = Markers_all,dot.scale = 20
+        # ,idents=c("Glutamatergic Neurons","GABAergic Neurons","Astrocytes","Micro-PVM","Oligos","OPCs","Endo-Pericytes","Tcells")
+        ,cluster.idents = TRUE
+        )+
+  coord_flip()+
+  scale_colour_binned_c4a_div('kovesi.div_bu_wh_rd2')
+ggsave(filename ="plot/Dotplot_re0.5.png",plot = Dotplot_re0.5,device = "png",width=2500,height = 4500,dpi = 100,units = "px" )
+ggsave(filename ="plot/Dotplot_re0.5.pdf",plot = Dotplot_re0.5,device = "pdf",width=2500,height = 4500,dpi = 100,units = "px" )
+```
+
+###改名
+```{r QC,analysis}
+cellnumber<- read_csv("Documents/cellnumber.csv")
+sobj@active.ident<-sobj$RNA_snn_res.0.5
+
+cluster <- cellnumber$cluster
+class <- cellnumber$class
+names(class) <- cluster
+sobj <- RenameIdents(sobj, class)
+
+sobj$class<-sobj@active.ident
+```
+
+##UMAP
+```{r}
+mycol1 <- c4a('paired',12)
+mycol1<-c( "#A6CEE3" ,"#1F78B4", "#B2DF8A" ,"#33A02C", "#FB9A99" ,"#E31A1C", "#FDBF6F" ,"#FF7F00" ,
+           "#CAB2D6", "#6A3D9A", "#FFFF99","#B15928")
+
+varuse<-"class"
+Idents(sobj)<-varuse
+splitvar<-NULL
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = FALSE
+        ,cols=mycol1
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_UMAP.png"),plot = UMAP_sample,device = "png",width=3000,height = 2500,dpi = 300,units = "px")
+```
+
+```{r}
+mycol1 <- c4a('paired',12)
+mycol1<-c( "#A6CEE3" ,"#1F78B4", "#B2DF8A" ,"#33A02C", "#FB9A99" ,"#E31A1C", "#FDBF6F" ,"#FF7F00" ,
+           "#CAB2D6", "#6A3D9A", "#FFFF99","#B15928")
+
+varuse<-"class"
+Idents(sobj)<-varuse
+splitvar<-NULL
+UMAP_sample<-DimPlot(sobj, reduction = "umap",label = TRUE
+        ,cols=mycol1
+        ,split.by  = splitvar
+        ,label.size = 1)
+ggsave(filename = paste0("plot/",reduction_name,"_",varuse,"_UMAP.png"),plot = UMAP_sample,device = "png",width=2500,height = 2000,dpi = 500,units = "px")
+```
+###Dotplot
+```{r}
+varuse<-"class"
+Idents(sobj)<-varuse
+Dotplot_re0.5<-DotPlot(sobj,features = Markers_all,dot.scale = 20
+        # ,idents=c("Glutamatergic Neurons","GABAergic Neurons","Astrocytes","Micro-PVM","Oligos","OPCs","Endo-Pericytes","Tcells")
+        ,cluster.idents = TRUE
+        )+
+  coord_flip()+
+  scale_colour_binned_c4a_div('kovesi.div_bu_wh_rd2')
+ggsave(filename ="plot/Dotplot_re0.5.png",plot = Dotplot_re0.5,device = "png",width=2500,height = 4500,dpi = 100,units = "px" )
+ggsave(filename ="plot/Dotplot_re0.5.pdf",plot = Dotplot_re0.5,device = "pdf",width=2500,height = 4500,dpi = 100,units = "px" )
+```

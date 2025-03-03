@@ -1,0 +1,123 @@
+##jobname
+```{r}
+jobname<-"PRL_V2_1.1Astrocytes"
+```
+
+##packages
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(openxlsx)
+library(tibble)
+library(SeuratData)
+library(SeuratWrappers)
+library(patchwork)
+library(tidyverse)
+library(loupeR)
+```
+
+##subset 
+```{r}
+sobj.astro<-subset(sobj,subset = class=="Astrocytes")
+```
+
+##recluster
+FastMNNIntegration
+```{r}
+# reduction_name<-"integrated.MNN"
+reduction_name<-"harmony"
+```
+
+```{r}
+integration_method<-FastMNNIntegration
+# identifier <- args[2]
+identifier<-"MNN"
+# Print the parameters
+# cat("Integration Method:", integration_method, "\n")
+cat("Identifier:", identifier, "\n")
+
+# Construct the name for the new reduction
+reduction_name <- paste('integrated', identifier, sep = '.')
+
+# Print the new reduction name
+cat("Reduction Name:", reduction_name, "\n")
+
+# File paths
+outRDS <- paste0("../Documents/sobj.astro_PD_", identifier, ".rds")
+outPDF_QC <- paste0("../plots/sobj.astro_PD_", identifier, "_QC.pdf")
+outPDF <- paste0("../plots/sobj.astro_PD_", identifier, ".pdf")
+outLoupe <- paste0("../Documents/louper_PD_", identifier)
+
+# Print file paths
+cat("Output RDS File:", outRDS, "\n")
+cat("Output QC PDF File:", outPDF_QC, "\n")
+cat("Output PDF File:", outPDF, "\n")
+cat("Output Loupe File:", outLoupe, "\n")
+
+# Read the Seurat object
+# sobj.astro <- readRDS("../../2024-03-06_27-integrate-harmony/data/sobj.astro_PD_before_integrate.rds")
+sobj.astro@assays$RNA@layers$data<-NULL
+sobj.astro[["RNA"]]<-split(sobj.astro[["RNA"]], f = sobj.astro$orig.ident)
+
+sobj.astro <- NormalizeData(sobj.astro)
+sobj.astro <- FindVariableFeatures(sobj.astro)
+sobj.astro <- ScaleData(sobj.astro)
+sobj.astro <- RunPCA(sobj.astro)
+
+# Perform integration dynamically
+sobj.astro <- IntegrateLayers(
+  object = sobj.astro, method = integration_method,
+  new.reduction = reduction_name,
+  verbose = TRUE)
+
+# Re-join layers after integration
+sobj.astro[["RNA"]] <- JoinLayers(sobj.astro[["RNA"]])
+```
+
+
+```{r}
+
+# Further analysis steps
+sobj.astro <- FindNeighbors(sobj.astro, reduction = reduction_name, dims = 1:15)
+sobj.astro <- FindClusters(sobj.astro, resolution = seq(0.1, 1, 0.1))
+sobj.astro <- RunUMAP(sobj.astro, dims = 1:15, reduction = reduction_name)
+
+# Save plots
+plot <- DimPlot(sobj.astro, reduction = "umap", split.by = "orig.ident")
+ggsave(outPDF_QC, plot, width = 7, height = 7, units = "in")
+
+plot <- DimPlot(sobj.astro, reduction = "umap", group.by = "RNA_snn_res.0.5")
+ggsave(outPDF, plot, width = 7, height = 7, units = "in")
+
+create_loupe_from_seurat(sobj.astro, output_name = outLoupe)
+
+# Save the integrated Seurat object
+saveRDS(sobj.astro, file = outRDS)
+```
+
+
+##Export clusters
+```{r}
+# dir.create("Documents")
+cellnumber<-data.frame(cluster=levels(sobj$RNA_snn_res.0.5)) %>% arrange %>%
+  mutate(class="",subclass="",subcluster="")
+write_csv(cellnumber,"Documents/cellnumber.csv")
+```
+
+###Export marker
+```{r QC,analysis}
+varuse<-"RNA_snn_res.0.5"
+Idents(sobj)<-varuse
+sobj.Markers<-FindAllMarkers(sobj,only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+sobj.Markers %>%
+  group_by(cluster) %>%
+  top_n(n = 30, wt = avg_log2FC) -> top30
+
+write.xlsx(top30, file = paste0("Documents/",varuse,"_Top30.xlsx"))
+write.xlsx(sobj.Markers, file = paste0("Documents/",varuse,".xlsx"))
+
+
+```

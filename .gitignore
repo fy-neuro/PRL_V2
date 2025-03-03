@@ -1,0 +1,12 @@
+
+20241230-1-QC_sample_info/Clinical Data.xlsx
+20241230-1-QC_sample_info/Dataplot.rds
+20241230-1-QC_sample_info/filelist.csv
+20241230-1-QC_sample_info/plot/cellnumber_age.pdf
+*.png
+*.pdf
+*.rds
+*.csv
+*.cloupe
+*.xlsx
+*.rda

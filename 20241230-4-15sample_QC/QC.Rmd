@@ -1,0 +1,57 @@
+
+```{r}
+
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(openxlsx)
+library(tibble)
+library(ggplot2)
+```
+
+##load data
+```{r}
+sobj<-readRDS("E:/PRL/20241230-3-QC_nGene/PRL_18sample.rds")
+```
+
+###drop 12LBS 13WJR 15ZHM
+```{r}
+samplelist<-levels(sobj$orig.ident)
+samplelist
+sobj<-subset(sobj,subset = orig.ident %in% samplelist[c(1,2,5,7:18)] )
+sobj$orig.ident<-sobj$orig.ident %>%as.character %>%as.factor
+summary(sobj$percent.mt)
+```
+
+##modify variable
+```{r}
+Meta.X<-sobj@meta.data
+Meta.X$orig.ident<-factor(Meta.X$orig.ident,levels = c("P1SXZ" , "P2LM"  , "P3MLR" , "P4CZZ" ,"P5DGJ", "P6ZJR" , "P7WL" ,  "P8FYD",  "P9TJR","P10CLW" ,"P11XAF" , "P14ZQM", "P16RMQ", "P17BMH" ,"P18DJX"))
+samplelist<-levels(Meta.X$orig.ident)
+```
+
+```{r}
+  Density_mt<-ggplot(Meta.X, aes(x=nFeature_RNA, fill=orig.ident)) +
+  geom_density()
+  ggsave(filename = paste0("plot_feature/","_Density_feature.png"),plot = Density_mt,device = "png",width=3000,height = 2000,dpi = 300,units = "px")
+```
+##calculate decrease rate
+```{r}
+sobj.filtered <- subset(sobj, subset = nFeature_RNA > 800 & nFeature_RNA < 6000 & percent.mt < 1)
+sobj
+sobj.filtered
+table(sobj$orig.ident)
+table(sobj.filtered$orig.ident)
+QCnumber<-cbind(table(sobj$orig.ident),table(sobj.filtered$orig.ident)) %>%as.data.frame
+names(QCnumber)<-c("before_QC","after_QC")
+
+QCnumber<-QCnumber %>%
+  mutate(percentagecut=(after_QC-before_QC)/before_QC *100)
+write.csv(QCnumber,"QCnumber_mt1.csv")
+```
+```{r}
+saveRDS(sobj.filtered,"PRL_15sampleQC.rds")
+```
+

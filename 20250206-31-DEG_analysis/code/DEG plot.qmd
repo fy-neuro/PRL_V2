@@ -1,0 +1,104 @@
+##DEG数量
+```{r}
+# 筛选 DEG 并分组统计
+filtered_clustermarkers <- lapply(clustermarkers, function(markers) {
+  # 筛选条件：p_val_adj < 0.1 且 |avg_log2FC| > 0.25
+  markers_filtered <- subset(markers, p_val_adj < 0.1 & abs(avg_log2FC) > 0.25)
+  
+  # 按 Group 分组统计 DEG 数量
+  deg_counts <- table(markers_filtered$cluster)  # 假设 Group 列包含 PD 和 Control 信息
+  return(deg_counts)
+})
+
+# 将结果转换为数据框
+de_counts <- do.call(rbind, lapply(names(filtered_clustermarkers), function(subcluster) {
+  data.frame(
+    subcluster = subcluster,
+    Group = names(filtered_clustermarkers[[subcluster]]),
+    num_DEGs = as.numeric(filtered_clustermarkers[[subcluster]])
+  )
+}))
+```
+
+
+```{r}
+# 加载必要的包
+library(ggplot2)
+
+# 绘制分组柱状图
+ggplot(de_counts, aes(x = subcluster, y = num_DEGs, fill = Group)) +
+  geom_col(position = "dodge", width = 0.8) +  # 分组柱状图
+  geom_text(aes(label = num_DEGs), position = position_dodge(width = 0.8), vjust = -0.5, size = 3) +  # 添加数值标签
+  theme_minimal() +  # 使用简洁主题
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),  # 调整 X 轴标签角度
+    plot.title = element_text(hjust = 0.5, face = "bold")         # 标题居中加粗
+  ) +
+  labs(
+    x = "Subcluster",
+    y = "Number of DEGs",
+    title = "Filtered Differential Expression Gene Counts by Subcluster and Group",
+    subtitle = "Filter criteria: p_val_adj < 0.1, |avg_log2FC| > 0.25",
+    fill = "Group"  # 图例标题
+  ) +
+  scale_fill_manual(values = c("PD" = "tomato", "Control" = "steelblue"))  # 自定义颜色
+
+ggsave(filename = "../plot/DEGnumber_subcluster.pdf",width = 20,height = 10)
+```
+
+
+```{r}
+# 筛选去除名称中包含 ENSG 的基因
+filtered_clustermarkers <- lapply(clustermarkers, function(markers) {
+  # 筛选条件：p_val_adj < 0.1 且 |avg_log2FC| > 0.25，且基因名称不包含 ENSG
+  markers_filtered <- subset(markers, p_val_adj < 0.1 & abs(avg_log2FC) > 0.25 & !grepl("ENSG", gene))
+  return(markers_filtered)
+})
+
+# 按 Group 分组统计 DEG 数量
+de_counts <- do.call(rbind, lapply(names(filtered_clustermarkers), function(subcluster) {
+  markers_filtered <- filtered_clustermarkers[[subcluster]]
+  if (nrow(markers_filtered) > 0) {
+    deg_counts <- table(markers_filtered$cluster)  # 假设 Group 列包含 PD 和 Control 信息
+    data.frame(
+      subcluster = subcluster,
+      Group = names(deg_counts),
+      num_DEGs = as.numeric(deg_counts)
+    )
+  } else {
+    data.frame(
+      subcluster = subcluster,
+      Group = c("PD", "Control"),
+      num_DEGs = c(0, 0)  # 如果没有 DEG，填充 0
+    )
+  }
+}))
+
+```
+
+```{r}
+# 加载必要的包
+library(ggplot2)
+
+# 绘制分组柱状图
+ggplot(de_counts, aes(x = subcluster, y = num_DEGs, fill = Group)) +
+  geom_col(position = "dodge", width = 0.8) +  # 分组柱状图
+  geom_text(aes(label = num_DEGs), position = position_dodge(width = 0.8), vjust = -0.5, size = 3) +  # 添加数值标签
+  theme_minimal() +  # 使用简洁主题
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),  # 调整 X 轴标签角度
+    plot.title = element_text(hjust = 0.5, face = "bold")         # 标题居中加粗
+  ) +
+  labs(
+    x = "Subcluster",
+    y = "Number of DEGs",
+    title = "Filtered Differential Expression Gene Counts by Subcluster and Group",
+    subtitle = "Filter criteria: p_val_adj < 0.1, |avg_log2FC| > 0.25, exclude ENSG genes",
+    fill = "Group"  # 图例标题
+  ) +
+  scale_fill_manual(values = c("PD" = "tomato", "Control" = "steelblue"))  # 自定义颜色
+
+ggsave(filename = "../plot/DEGnumber_withoutENSG.pdf",width = 20,height = 10)
+```
+
+

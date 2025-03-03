@@ -1,0 +1,201 @@
+##UMAP
+```{r}
+plotumap <-function(sobj.subset){
+
+  Idents(sobj.subset) <- "subcluster"
+  UMAPplot<-DimPlot(sobj.subset,
+        # group.by = "seurat_clusters",
+        cols = custom_colors,  # 使用手动定义的颜色向量
+        label = TRUE,
+        label.size = 3,
+        split.by = "Group",
+        repel = TRUE) +
+  theme(legend.text = element_text(size = 8))
+  ggsave(filename = paste0("../plot/",celltype,"_UMAP_Group.pdf"),plot = UMAPplot,width = 10,height = 5)
+}
+plotumap(sobj.subset)
+# ggsave(paste0("../plot/",celltype,"_UMAP_Group.pdf"),plot = UMAPplot,width = 10,height = 5)
+
+```
+##Heatmap
+```{r}
+plotheatmap <- function(sobj.subset){
+  ##Heatmap
+
+11# 使用自定Marker进行手动注释----
+  varuse<-"subcluster"
+  Idents(sobj)<-varuse
+  sobj.Markers<-FindAllMarkers(sobj.subset,only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+  sobj.Markers %>%
+    group_by(cluster) %>%
+    top_n(n = 30, wt = avg_log2FC) -> top30
+  sobj.Markers %>%
+    group_by(cluster) %>%
+    top_n(n = 10, wt = avg_log2FC) -> top10
+  
+  sobj.scale<-ScaleData(subset(sobj.subset,downsample=200),features=top30$gene)
+  Heatmap<-DoHeatmap(sobj.scale
+                     ,features = top10$gene
+                     ,group.colors = custom_colors
+                     ) + 
+    scale_fill_gradientn(colors = c("white","grey","firebrick3"))+
+    NoLegend()
+  ggsave(filename =  paste0("../plot/",celltype,"_subcluster_Heatmap",".png"),device = "png",width=2500,height = 2000,dpi = 300,units = "px")
+}
+# plotheatmap(sobj.subset)
+```
+
+##cellratio
+```{r plot}
+
+plotcellratio <- function(sobj.subset){
+  sobj.subset $subcluster<-sobj.subset$subcluster %>%as.character %>%as.factor
+  cell_number<-(prop.table(table(sobj.subset$subcluster,sobj.subset$Group),margin = 2)*100)%>%
+  round(digits = 2)
+cell_number<-as.data.frame(cell_number)
+colnames(cell_number)<-c('celltype','Group','percentage')
+levels(cell_number$Group)
+
+
+p <- ggplot(cell_number, aes(x = Group, #给一个数值向量作为柱子x轴的中心坐标
+                            y = percentage,
+                            fill = celltype  )) + #将颜色映射到celltype
+  geom_bar(position = "stack", stat="identity", color = NA, width = 0.8)
+# geom_col(width = 1.5, #柱形图柱子宽度
+#          color = 'white') 
+p
+
+p1<-p+scale_fill_manual(values = custom_colors) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme_classic()+ # 这里使用条形图作为示例
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p1
+
+ggsave(filename =paste0("../plot/",celltype,"_Cellratio_subcluster.png"),plot = p1,device = "png",width=2500,height = 2500,dpi = 300,units = "px" )
+ggsave(filename =paste0("../plot/",celltype,"_Cellratio_subcluster.pdf"),plot = p1,device = "pdf",width=2500,height = 2500,dpi = 300,units = "px" )
+}
+
+```
+
+##number
+```{r}
+
+plotcellnumber <- function(sobj){
+  # Step 1: 提取细胞亚群与分组数据
+cell_counts <- sobj@meta.data %>% 
+  group_by(Group, subcluster) %>%      # 按分组和细胞亚群统计
+  summarise(Count = n(), .groups = 'drop') # 计算每组的细胞数量
+
+# 检查数据格式
+head(cell_counts)
+# 输出应类似：
+# Group    subcluster  Count
+# Control  T_cells     1500
+# PD       B_cells     800
+# ... 
+
+# Step 2: 绘制分组柱状图
+p <- ggplot(cell_counts, 
+       aes(x = subcluster, y = Count, fill = Group)) +  # x轴为细胞类型，填充颜色按分组
+  geom_bar(stat = "identity", 
+           position = position_dodge(width = 0.8),  # 并排显示
+           width = 0.7) +                           # 柱子宽度
+  scale_fill_manual(values = c("Control" = "#1f77b4", "PD" = "#ff7f0e")) + # 自定义颜色
+  labs(
+    title = "PD vs Control Cell Number",
+    x = "celltype",
+    y = "Number",
+    fill = "Group"
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),  # x轴标签倾斜45度
+    legend.position = "top"
+  ) +
+  geom_text(
+    aes(label = Count), 
+    position = position_dodge(width = 0.8), 
+    vjust = -0.5, 
+    size = 3
+  )  # 在柱子上方添加数量标签
+
+# Step 3: 显示并保存图片
+print(p)
+ggsave(paste0("../plot/",celltype,"_Count_Comparison.png"), plot = p, width = 8, height = 6, dpi = 300)
+ggsave(paste0("../plot/",celltype,"_Count_Comparison.pdf"), plot = p, width = 8, height = 6)
+  
+  
+}
+
+plotcellnumber(sobj.subset)
+```
+
+
+##ratio
+```{r}
+
+plotcellratio <-function(sobj){
+  
+# Step 1: 计算细胞比例
+cell_prop <- sobj@meta.data %>% 
+  count(Group, subcluster) %>%          # 统计分组-亚群细胞数量
+  group_by(Group) %>%                   # 按组计算比例
+  mutate(Percentage = n / sum(n) * 100) %>% 
+  ungroup() %>%
+  mutate(Percentage = round(Percentage, 1))  # 保留1位小数
+
+# Step 2: 绘制分组柱状图
+p <- ggplot(cell_prop, 
+       aes(x = subcluster,              # x轴为细胞亚群
+           y = Percentage, 
+           fill = Group)) +             # 按组填充颜色
+  geom_bar(stat = "identity", 
+           position = position_dodge(width = 0.8),  # 关键参数：并排显示
+           width = 0.7,                 # 柱子宽度
+           color = "black") +           # 柱子边框颜色
+  geom_text(
+    aes(label = paste0(Percentage, "%")), 
+    position = position_dodge(width = 0.8),  # 标签与柱子对齐
+    vjust = -0.5,                       # 标签位于柱子上方
+    size = 3, 
+    color = "black"
+  ) +
+  scale_fill_manual(values = c("Control" = "#1f77b4", "PD" = "#ff7f0e")) + # 自定义颜色
+  labs(
+    title = "PD vs Control Cell Percentage",
+    x = "celltype",
+    y = "Percentage (%)",
+    fill = "Group"
+  ) +
+  theme_classic() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.text.x = element_text(angle = 45, hjust = 1),  # x轴标签倾斜45度
+    legend.position = "top"
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1)))  # 调整y轴留白
+
+# Step 3: 显示并保存图片
+print(p)
+ggsave(paste0("../plot/",celltype,"_ratio_Comparison.png"), plot = p, width = 10, height = 6, dpi = 300)
+ggsave(paste0("../plot/",celltype,"_ratio_Comparison.pdf"), plot = p, width = 10, height = 6)
+  
+}
+
+
+```
+
+
+##Do loop
+```{r}
+for (celltype in celltypes) {
+  sobj.subset <- sobj.subsets[[celltype]]
+  # plotheatmap(sobj.subset = sobj.subset)
+  # plotumap(sobj.subset = sobj.subset  )
+  # plotcellratio(sobj.subset)
+  # plotcellnumber(sobj.subset)
+  plotcellratio(sobj.subset)
+}
+```
+
