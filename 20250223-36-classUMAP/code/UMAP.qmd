@@ -1,0 +1,139 @@
+##Begining 
+###packages
+
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+library(SeuratWrappers)
+```
+
+###jobname
+
+```{r}
+jobname<-"PRL_36"
+dir.create("../Documents/")
+```
+
+
+###load data
+
+```{r}
+sobj<-readRDS("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20250123-24-Annotation-third-MNN/Documents/sobj_3rd_cleaned.rds")
+```
+
+```{r}
+mycol1<-c( "#A6CEE3" ,"#1F78B4", "#B2DF8A" ,"#33A02C", "#FB9A99" ,"#E31A1C", "#FDBF6F" ,"#FF7F00" ,
+           "#CAB2D6", "#6A3D9A", "#FFFF99","#B15928")
+
+```
+
+###UMAP
+```{r}
+varuse<-"class"
+Idents(sobj)<-varuse
+splitvar<-NULL
+UMAP_sample<-DimPlot(sobj,
+        # group.by = "seurat_clusters",
+        cols = mycol1,  # 使用手动定义的颜色向量
+        label = TRUE,
+        label.size = 3,
+        repel = TRUE) +
+  theme(legend.text = element_text(size = 8))
+ggsave(filename = paste0("../plot/",varuse,"_UMAP.png"),plot = UMAP_sample,device = "png",width=2500,height = 2000,dpi = 500,units = "px")
+```
+
+```{r}
+varuse<-"class"
+Idents(sobj)<-varuse
+splitvar<-"Group"
+UMAP_sample<-DimPlot(sobj,
+                     split.by = splitvar,
+        # group.by = "seurat_clusters",
+        cols = mycol1,  # 使用手动定义的颜色向量
+        label = TRUE,
+        label.size = 3,
+        repel = TRUE) +
+  theme(legend.text = element_text(size = 8))
+ggsave(filename = paste0("../plot/",varuse,"_Group","_UMAP.png"),plot = UMAP_sample,device = "png",width=4500,height = 2000,dpi = 500,units = "px")
+```
+##set Marker
+```{r}
+Markers_all<-c(
+  'RALYL','LDB2','NELL2'
+  #Glutamatergic Neuron	
+  ,'GAD1','GRIP1','GAD2','SLC6A1'
+  #GABAergic Neuron	
+  ,'PDGFRA','VCAN','OLIG1'
+  # OPC
+  ,'MBP','MOBP','MOG',"OPALIN"
+  # OLIGO
+  ,'AQP4','GFAP','FGFR3',"NHSL1","SLC25A18"
+  # ASTRO
+  ,  'CD2','THEMIS','CD3D'
+   # T CELL
+  ,'ITGAM','CD74','CX3CR1','P2RY12',"C3","CSF1R"
+  # MICRO 
+  ,'DCN','FLT1',"LEF1","VWF"
+  # VC
+)
+```
+###Dotplot
+```{r}
+varuse<-"class"
+Idents(sobj)<-varuse
+Dotplot_re0.5<-DotPlot(sobj,features = Markers_all,dot.scale = 20
+        # ,idents=c("Glutamatergic Neurons","GABAergic Neurons","Astrocytes","Micro-PVM","Oligos","OPCs","Endo-Pericytes","Tcells")
+        ,cluster.idents = TRUE
+        )+
+  coord_flip()+
+  scale_colour_binned_c4a_div('kovesi.div_bu_wh_rd2')
+ggsave(filename ="../plot/Dotplot_re0.5.png",plot = Dotplot_re0.5,device = "png",width=2500,height = 4500,dpi = 100,units = "px" )
+ggsave(filename ="../plot/Dotplot_re0.5.pdf",plot = Dotplot_re0.5,device = "pdf",width=2500,height = 4500,dpi = 100,units = "px" )
+```
+
+###Heatmap
+```{r}
+sobj.scale<-ScaleData(subset(sobj,downsample=200),features=Markers_all)
+Heatmap<-DoHeatmap(sobj.scale
+                   ,features = Markers_all
+                   ,group.colors = mycol1
+                   ) + 
+  scale_fill_gradientn(colors = c("white","grey","firebrick3"))+
+  NoLegend()
+ggsave(filename =  paste0("../plot/","class_Heatmap",".png"),device = "png",width=2500,height = 2000,dpi = 150,units = "px")
+```
+
+
+##cellratio
+```{r plot}
+cell_number<-(prop.table(table(sobj$class,sobj$Group),margin = 2)*100)%>%
+  round(digits = 2)
+cell_number<-as.data.frame(cell_number)
+colnames(cell_number)<-c('celltype','Group','percentage')
+levels(cell_number$Group)
+
+
+p <- ggplot(cell_number, aes(x = Group, #给一个数值向量作为柱子x轴的中心坐标
+                            y = percentage,
+                            fill = celltype  )) + #将颜色映射到celltype
+  geom_bar(position = "stack", stat="identity", color = NA, width = 0.8)
+# geom_col(width = 1.5, #柱形图柱子宽度
+#          color = 'white') 
+p
+
+p1<-p+scale_fill_manual(values = mycol1) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme_classic()+ # 这里使用条形图作为示例
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p1
+
+ggsave(filename =paste0("../plot/","Cellratio_class.png"),plot = p1,device = "png",width=2500,height = 2500,dpi = 300,units = "px" )
+ggsave(filename =paste0("../plot/","Cellratio_class.pdf"),plot = p1,device = "pdf",width=2500,height = 2500,dpi = 300,units = "px" )
+```

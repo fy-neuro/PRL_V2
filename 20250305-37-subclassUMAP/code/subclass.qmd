@@ -1,0 +1,219 @@
+##Begining 
+###packages
+
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+library(SeuratWrappers)
+```
+
+###jobname
+
+```{r}
+jobname<-"PRL_37"
+dir.create("../Documents/")
+```
+
+
+###load data
+
+```{r}
+sobj<-readRDS("/storage/liuxiaodongLab/fanyi/FY/PRL_V2/20250123-24-Annotation-third-MNN/Documents/sobj_3rd_cleaned.rds")
+```
+
+```{r}
+mycol1<-c( "#A6CEE3" ,"#1F78B4", "#B2DF8A" ,"#33A02C", "#FB9A99" ,"#E31A1C", "#FDBF6F" ,"#FF7F00" ,
+           "#CAB2D6", "#6A3D9A", "#FFFF99","#B15928")
+# 创建配色向量（命名向量方便调用）
+subclass_colors <- c(
+  # 抑制性神经元 (GABA能) - 蓝色系渐变
+  "ID2" = "#8ECEF5",       # 浅天蓝
+  "PV" = "#3A8CB5",         # 深海蓝
+  "SST" = "#5EB0D1",        # 湖蓝
+  "VIP" = "#7FD4FF",        # 冰蓝
+  
+  # 兴奋性神经元 (谷氨酸能) - 绿色系渐变
+  "L2/3-CUX2" = "#A4D7A0",  # 嫩芽绿
+  "L3-5-RORB" = "#6BAF6B",  # 森林绿
+  "L5/6-THEMIS" = "#3D8B3D",# 松针绿
+  "L5/6-TLE4" = "#C2E699",  # 黄绿
+  
+  # 星形胶质细胞 - 紫色系渐变
+  "Astro-PLCG1" = "#C8A2C8",  # 薰衣草紫
+  "Astro-SERPINI2" = "#9674B6",# 紫水晶
+  
+  # 小胶质细胞 - 橙色系渐变
+  "Microglia" = "#F7B267",    # 落日橙
+  "Microglia-IL1B" = "#E67E22",# 琥珀橙
+  
+  # 免疫细胞 - 红色系
+  "T cells" = "#E74C3C",     # 朱红
+  "BAMs" = "#F1948A",        # 珊瑚粉
+  
+  # 少突胶质系 - 粉色系渐变
+  "Oligos" = "#F5B0CB",      # 樱花粉
+  "OPCs" = "#F06EA9",        # 蔷薇粉
+  "OPCs-MBP" = "#D43D6F",    # 莓果红
+  
+  # 血管相关 - 中性灰
+  "Vascular" = "#95A5A6"     # 石板灰
+)
+
+
+```
+
+###UMAP
+```{r}
+varuse<-"subclass"
+Idents(sobj)<-varuse
+splitvar<-NULL
+UMAP_sample<-DimPlot(sobj,
+        # group.by = "seurat_clusters",
+        cols = subclass_colors,  # 使用手动定义的颜色向量
+        label = TRUE,
+        label.size = 3,
+        repel = TRUE) +
+  theme(legend.text = element_text(size = 8))
+ggsave(filename = paste0("../plot/",varuse,"_UMAP.png"),plot = UMAP_sample,device = "png",width=2500,height = 2000,dpi = 400,units = "px")
+```
+
+```{r}
+varuse<-"subclass"
+Idents(sobj)<-varuse
+splitvar<-"Group"
+UMAP_sample<-DimPlot(sobj,
+                     split.by = splitvar,
+        # group.by = "seurat_clusters",
+        cols = subclass_colors,  # 使用手动定义的颜色向量
+        label = TRUE,
+        label.size = 3,
+        repel = TRUE) +
+  theme(legend.text = element_text(size = 8))
+ggsave(filename = paste0("../plot/",varuse,"_Group","_UMAP.png"),plot = UMAP_sample,device = "png",width=4500,height = 2000,dpi = 500,units = "px")
+```
+##set Marker
+```{r}
+Markers_all<-c(
+  'RALYL','LDB2','NELL2'
+  #Glutamatergic Neuron	
+  ,'GAD1','GRIP1','GAD2','SLC6A1'
+  #GABAergic Neuron	
+  ,'PDGFRA','VCAN','OLIG1'
+  # OPC
+  ,'MBP','MOBP','MOG',"OPALIN"
+  # OLIGO
+  ,'AQP4','GFAP','FGFR3',"NHSL1","SLC25A18"
+  # ASTRO
+  ,  'CD2','THEMIS','CD3D'
+   # T CELL
+  ,'ITGAM','CD74','CX3CR1','P2RY12',"C3","CSF1R"
+  # MICRO 
+  ,'DCN','FLT1',"LEF1","VWF"
+  # VC
+)
+```
+
+
+###Heatmap
+```{r}
+##Marker
+
+11# 使用自定Marker进行手动注释----
+varuse<-"subclass"
+Idents(sobj)<-varuse
+sobj.Markers<-FindAllMarkers(sobj,only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+sobj.Markers %>%
+  group_by(cluster) %>%
+  top_n(n = 30, wt = avg_log2FC) -> top30
+sobj.Markers %>%
+  group_by(cluster) %>%
+  top_n(n = 10, wt = avg_log2FC) -> top10
+```
+
+```{r}
+top30_select <- top30 %>%
+  filter(!grepl("ENSG", gene))
+top10_select <- top10 %>%
+  filter(!grepl("ENSG", gene))
+```
+
+
+```{r}
+sobj.scale<-ScaleData(subset(sobj,downsample=200),features=top30_select$gene)
+Heatmap<-DoHeatmap(sobj.scale
+                   ,features = top10_select$gene
+                   ,group.colors = subclass_colors
+                  ,size = 6
+                   ) + 
+  scale_fill_gradientn(colors = c("white","grey","firebrick3"))+
+  theme(
+    # axis.text.y = element_text(size = 12, hjust = 1, margin = margin(r = 15)), # 基因名右对齐并增加右侧边距
+    # axis.text.x = element_text(size = 10, angle = 45, hjust = 1), # 调整样本名角度防止重叠
+    plot.margin = unit(c(1, 1, 1, 3), "cm")  # 增加左侧边距防止文字截断
+  )+
+  NoLegend()
+ggsave(filename =  paste0("../plot/","subclass_Heatmap",".png"),device = "png",width=3000,height = 4000,dpi = 200,units = "px")
+```
+
+```{r}
+sobj.scale <- ScaleData(subset(sobj, downsample=200), features = top30_select$gene)
+
+Heatmap <- DoHeatmap(
+  sobj.scale,
+  features = top10_select$gene,
+  group.colors = subclass_colors,
+  size = 4,          # 调整聚类注释文字大小
+  group.bar.height = 0.03  # 调整分类条的高度
+) + 
+  scale_fill_gradientn(colors = c("white","grey","firebrick3")) +
+  theme(
+    axis.text.y = element_text(size = 12, hjust = 1, margin = margin(r = 15)), # 基因名右对齐并增加右侧边距
+    axis.text.x = element_text(size = 10, angle = 45, hjust = 1), # 调整样本名角度防止重叠
+    plot.margin = unit(c(1, 1, 1, 3), "cm")  # 增加左侧边距防止文字截断
+  ) +
+  NoLegend()
+
+ggsave(
+  filename = paste0("../plot/","subclass_Heatmap",".png"),
+  plot = Heatmap,
+  device = "png",
+  width = 3000,       # 增加宽度以容纳更大的边距
+  height = 4000,
+  dpi = 300,          # 提高DPI保证清晰度
+  units = "px"
+)
+```
+
+##cellratio
+```{r plot}
+cell_number<-(prop.table(table(sobj$subclass,sobj$Group),margin = 2)*100)%>%
+  round(digits = 2)
+cell_number<-as.data.frame(cell_number)
+colnames(cell_number)<-c('celltype','Group','percentage')
+levels(cell_number$Group)
+
+
+p <- ggplot(cell_number, aes(x = Group, #给一个数值向量作为柱子x轴的中心坐标
+                            y = percentage,
+                            fill = celltype  )) + #将颜色映射到celltype
+  geom_bar(position = "stack", stat="identity", color = NA, width = 0.8)
+# geom_col(width = 1.5, #柱形图柱子宽度
+#          color = 'white') 
+p
+
+p1<-p+scale_fill_manual(values = subclass_colors) +
+  scale_y_continuous(expand = c(0,0)) +
+  theme_classic()+ # 这里使用条形图作为示例
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+p1
+
+ggsave(filename =paste0("../plot/","Cellratio_subclass.png"),plot = p1,device = "png",width=2500,height = 2500,dpi = 300,units = "px" )
+ggsave(filename =paste0("../plot/","Cellratio_subclass.pdf"),plot = p1,device = "pdf",width=2500,height = 2500,dpi = 300,units = "px" )
+```

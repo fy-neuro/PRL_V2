@@ -10,17 +10,16 @@ library(tibble)
 ```
 
 ```{r}
-dir.create("Documents")
+dir.create("../Documents")
 ```
 
-
-```{r}
-sobj<-readRDS("../20241231-9-15sample_MNN/data/sobj_PD_MNN.rds")
-```
 
 ```{r}
 sobj <- RunUMAP(sobj, dims = 1:20, reduction = reduction_name)
 ```
+
+
+
 
 ###导出分组情况
 ```{r}

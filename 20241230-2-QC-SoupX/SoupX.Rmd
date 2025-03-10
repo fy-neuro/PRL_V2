@@ -1,0 +1,103 @@
+```{r}
+library(ggplot2)
+library(SoupX)
+library(Seurat)
+library(DropletUtils)
+
+```
+
+##load data
+```{r}
+sobj
+sobj.raw
+```
+
+```{r}
+i=13
+```
+
+
+##尝试1个
+```{r}
+for (i in 3:18) {
+  cat("proceding ",i)
+  raw<-Read10X(Directory_raw[i])
+filter<-Read10X(Directory[i])
+
+common_genes <- intersect(row.names(raw), row.names(filter))
+
+filter[1:5, 1:5]
+colnames(filter) <- gsub("-3$", "-1", colnames(filter))
+
+setdiff(colnames(filter), colnames(raw))
+setdiff(colnames(raw), colnames(filter))
+
+sobj<-filter
+sobj<-CreateSeuratObject(sobj)
+sobj<-NormalizeData(sobj)
+sobj<-FindVariableFeatures(sobj)
+sobj.genes<-rownames(sobj)
+sobj<-ScaleData(sobj)
+sobj<-RunPCA(sobj)
+sobj<-FindNeighbors(sobj,dims=1:20)
+sobj<-FindClusters(sobj,resolution=0.5)
+# sobj<-RunUMAP(sobj,dims=1:20)
+#提取聚类后的meta.data信息
+
+
+sc <- SoupChannel(raw, filter)
+sc <- setClusters(sc, sobj$seurat_clusters)
+sc <- autoEstCont(sc, doPlot = TRUE)
+
+out <- adjustCounts(sc, roundToInt = TRUE)
+# sobj[["originalCounts"]] <- CreateAssayObject(counts = filter)
+
+saveRDS(out,paste0("matrix",i,".rds"))
+}
+raw<-Read10X(Directory_raw[i])
+filter<-Read10X(Directory[i])
+
+common_genes <- intersect(row.names(raw), row.names(filter))
+
+filter[1:5, 1:5]
+colnames(filter) <- gsub("-3$", "-1", colnames(filter))
+
+setdiff(colnames(filter), colnames(raw))
+setdiff(colnames(raw), colnames(filter))
+
+sobj<-filter
+sobj<-CreateSeuratObject(sobj)
+sobj<-NormalizeData(sobj)
+sobj<-FindVariableFeatures(sobj)
+sobj.genes<-rownames(sobj)
+sobj<-ScaleData(sobj)
+sobj<-RunPCA(sobj)
+sobj<-FindNeighbors(sobj,dims=1:20)
+sobj<-FindClusters(sobj,resolution=0.5)
+# sobj<-RunUMAP(sobj,dims=1:20)
+#提取聚类后的meta.data信息
+
+
+sc <- SoupChannel(raw, filter)
+sc <- setClusters(sc, sobj$seurat_clusters)
+sc <- autoEstCont(sc, doPlot = TRUE)
+
+out <- adjustCounts(sc, roundToInt = TRUE)
+# sobj[["originalCounts"]] <- CreateAssayObject(counts = filter)
+
+saveRDS(out,paste0("matrix",i,".rds"))
+
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+# sc = load10X('path/to/your/cellranger/outs/folder')
+sc = autoEstCont(sobj)
+out = adjustCounts(sobj)
+```
+
