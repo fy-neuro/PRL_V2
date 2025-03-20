@@ -23,7 +23,6 @@ sobj <- RunUMAP(sobj, dims = 1:20, reduction = reduction_name)
 
 ###导出分组情况
 ```{r}
-# dir.create("Documents")
 cellnumber<-data.frame(cluster=levels(sobj$RNA_snn_res.0.5)) %>% arrange %>%
   mutate(class="",subclass="",subcluster="")
 write_csv(cellnumber,"Documents/cellnumber.csv")

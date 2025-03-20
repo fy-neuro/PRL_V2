@@ -10,3 +10,6 @@
 *.cloupe
 *.xlsx
 *.rda
+.Rproj.user
+*.zip
+*.Rproj
