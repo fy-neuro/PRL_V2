@@ -1,0 +1,124 @@
+```{r}
+sobj <- subset(sobj , subset = subcluster =="L2/3-CUX2")
+```
+
+
+##recluster
+```{r}
+# sobj <- JoinLayers(sobj)
+reduction_name<-"harmony"
+
+sobj <- NormalizeData(sobj)
+
+sobj <- FindVariableFeatures(sobj)
+
+sobj <- ScaleData(sobj)
+
+sobj <- RunPCA(sobj, features = VariableFeatures(object = sobj))
+sobj <- RunHarmony(sobj,group.by.vars="orig.ident", reduction.use = "pca")
+
+dir.create("../plot", showWarnings = FALSE)
+Cairo::CairoPNG(filename = "../plot/Heatmap.png", width = 5000, height = 5000, units = "px", dpi = 300)
+DimHeatmap(sobj, dims = 1:30, cells = 500, balanced = TRUE,reduction = "harmony")
+dev.off()
+```
+
+
+```{r}
+# Further analysis steps
+sobj <- FindNeighbors(sobj, reduction = reduction_name, dims = 1:15)
+sobj <- FindClusters(sobj, resolution = seq(0.1, 1, 0.1))
+sobj <- RunUMAP(sobj, dims = 1:15, reduction = reduction_name)
+
+```
+
+##DEG
+```{r}
+dir.create("../Documents/")
+```
+##DEG
+```{r}
+clustermarkers <- list()
+clustermarkers_top30 <- list()
+
+
+for (i in seq(0.1,1,0.1)) {
+  cat("RNA_snn_res.",i,"\n")
+Idents(sobj) <- paste0("RNA_snn_res.",i)
+  celltype <- paste0("RNA_snn_res.",i)
+  sobj.Markers<-FindAllMarkers(sobj,only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+  sobj.Markers %>%
+    group_by(cluster) %>%
+    top_n(n = 30, wt = avg_log2FC) -> top30
+      
+    clustermarkers[[celltype]]<-sobj.Markers
+    clustermarkers_top30[[celltype]]<-top30
+    
+    
+      write.xlsx(clustermarkers,file =paste0("../Documents/","marker.xlsx") ,sheetName=names(clustermarkers))
+  write.xlsx(clustermarkers_top30,file =paste0("../Documents/","marker_top30.xlsx") ,sheetName=names(clustermarkers_top30))
+  }
+
+```
+
+
+```{r}
+create_loupe_from_seurat(sobj, output_name = "../Documents/CUX2")
+```
+
+
+
+##Proportion
+```{r}
+
+cell_number<-(prop.table(table(sobj$RNA_snn_res.0.3,sobj$Group),margin = 2)*100)%>%
+  round(digits = 2)
+cell_number<-as.data.frame(cell_number)
+
+colnames(cell_number)<-c('celltype','Group','percentage')
+# ordered_sample <-c(
+#   "wt3m","wt4m","a53t4m","wt8m","a53t8m","wt12m","wt12mc","a53t12m"
+# )
+# cell_number$Group <- factor(cell_number$Group, levels = ordered_sample)
+# 
+# cell_number <- cell_number %>%
+#   dplyr::filter(Group %in% c(
+#   "wt3m","a53t4m","wt8m","a53t8m","wt12mc","a53t12m"
+# ))
+
+p <- ggplot(cell_number, aes(x = celltype, 
+                            y = percentage,
+                            fill = Group)) +
+  geom_bar(position = position_dodge(0.85), # 微调分组间距
+           stat = "identity", 
+           width = 0.75, # 调整柱子宽度
+           color = "white", # 添加白色边框
+           linewidth = 0.3) + # 边框细线
+  geom_text(aes(label = percentage), # 添加数值标签
+            position = position_dodge(0.75),
+            vjust = -0.5, 
+            size = 1, 
+            color = "black") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.1))) + # 优化坐标轴空白
+  labs(x = "Cell Type", 
+       y = "Percentage (%)",
+       title = "Cell Type Proportion by Group") +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
+    plot.title = element_text(hjust = 0.5, size = 14),
+    legend.position = "top",
+    panel.grid.major.x = element_blank()
+  )
+mycol <- c("#4d97cd", "#db6968", "#99cbeb", "#459943",
+           "#fdc58f", "#e8c559", "#a3d393", "#f8984e")
+p + scale_fill_manual(values = mycol)
+
+ggsave(filename = "../plot/Cellratio_type_dodge_V3.png",
+       device = "png", 
+       width = 25,  # 改用厘米单位更直观
+       height = 15, 
+       bg = "white",
+       units = "cm",
+       dpi = 600) # 提高分辨率
+```

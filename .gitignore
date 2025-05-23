@@ -13,3 +13,7 @@
 .Rproj.user
 *.zip
 *.Rproj
+*.ai
+*.RData
+*.rar
+*.pptx

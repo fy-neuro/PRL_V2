@@ -1,0 +1,164 @@
+##Begining 
+###packages
+
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+library(SeuratWrappers)
+library(CellChat)
+```
+
+###jobname
+
+```{r}
+jobname<-"PRL_42"
+```
+
+###load data
+"T cells"        "BAMs" "Vascular"
+```{r}
+sobj<-readRDS("E:/PRL/20250123-24-Annotation-third-MNN/Documents/sobj_3rd_cleaned.rds")
+
+sobj <- subset(sobj,subset=subclass != "T cells" & subclass != "BAMs" & subclass != "Vascular")
+sobj$subcluster<- sobj$subcluster %>% as.character %>% as.factor
+sobj$subclass <- sobj$subclass %>% as.character %>% as.factor
+sobj$samples <- sobj$orig.ident %>% as.factor
+```
+##function
+```{r}
+# 安装所需包
+# if (!require("CellChat")) remotes::install_github("sqjin/CellChat")
+library(CellChat)
+library(Seurat)
+library(patchwork)
+
+# 创建函数简化重复操作
+create_cellchat <- function(seurat_obj, celltype_column) {
+  # 提取表达矩阵和metadata
+  data.input <- GetAssayData(seurat_obj, assay = "RNA", slot = "data")
+  meta <- seurat_obj@meta.data[, c("orig.ident", "Group", celltype_column,"samples")]
+  colnames(meta)[3] <- "celltype"
+  
+  # 创建CellChat对象
+  cellchat <- createCellChat(object = data.input, meta = meta, group.by = "celltype")
+  
+  # 添加细胞注释
+  cellchat <- setIdent(cellchat, ident.use = "celltype")
+  CellChatDB <- CellChatDB.human # use CellChatDB.human if running on human data
+  CellChatDB.use <- subsetDB(CellChatDB, search = "Secreted Signaling", key = "annotation") # use Secreted Signaling
+  # 预处理
+  cellchat@DB <- CellChatDB.use  # 根据实际物种选择
+  cellchat <- subsetData(cellchat)
+  cellchat <- identifyOverExpressedGenes(cellchat)
+  cellchat <- identifyOverExpressedInteractions(cellchat)
+  
+  return(cellchat)
+}
+
+Coumpute_Filter <- function(cellchat, min.cells) {
+  # 过滤通讯
+  cellchat <- computeCommunProb(cellchat)
+  cellchat <- filterCommunication(cellchat, min.cells = min.cells)
+  cellchat <- computeCommunProbPathway(cellchat)
+  cellchat <- aggregateNet(cellchat)
+  
+  return(cellchat)
+}
+```
+
+##设置参数
+```{r}
+# 对于大数据集可启用并行
+future::plan("sequential")
+# options(future.globals.maxSize = 16 * 1024^3)
+ct_level <- "subclass"
+```
+
+
+##运行
+```{r}
+# 对每个注释层级进行分析
+
+  cat(ct_level,"\n")
+  # 创建CellChat对象
+  cellchat <- create_cellchat(sobj, ct_level)
+  
+  # 计算通讯概率
+  cellchat <- computeCommunProb(cellchat)
+  cellchat <- filterCommunication(cellchat, min.cells = 10)
+  cellchat <- computeCommunProbPathway(cellchat)
+  cellchat <- aggregateNet(cellchat)
+```
+
+
+```{r}
+dir.create("../Documents",showWarnings = F)
+```
+##save cellchat object
+```{r}
+saveRDS(cellchat,paste0("../Documents/Cellchat_Object_",ct_level,".rds"))
+  groupSize <- as.numeric(table(cellchat@idents))
+```
+
+
+
+```{r}
+## 创建配色向量（命名向量方便调用）
+subclass_colors <- c(
+  # 抑制性神经元 (GABA能) - 蓝色系渐变
+  "ID2" = "#8ECEF5",       # 浅天蓝
+  "PV" = "#3A8CB5",         # 深海蓝
+  "SST" = "#5EB0D1",        # 湖蓝
+  "VIP" = "#7FD4FF",        # 冰蓝
+  
+  # 兴奋性神经元 (谷氨酸能) - 绿色系渐变
+  "L2/3-CUX2" = "#A4D7A0",  # 嫩芽绿
+  "L3-5-RORB" = "#6BAF6B",  # 森林绿
+  "L5/6-THEMIS" = "#3D8B3D",# 松针绿
+  "L5/6-TLE4" = "#C2E699",  # 黄绿
+  
+  # 星形胶质细胞 - 紫色系渐变
+  "Astro-PLCG1" = "#C8A2C8",  # 薰衣草紫
+  "Astro-SERPINI2" = "#9674B6",# 紫水晶
+  
+  # 小胶质细胞 - 橙色系渐变
+  "Microglia" = "#F7B267",    # 落日橙
+  "Microglia-IL1B" = "#E67E22",# 琥珀橙
+  
+  # 免疫细胞 - 红色系
+  "T cells" = "#E74C3C",     # 朱红
+  "BAMs" = "#F1948A",        # 珊瑚粉
+  
+  # 少突胶质系 - 粉色系渐变
+  "Oligos" = "#F5B0CB",      # 樱花粉
+  "OPCs" = "#F06EA9",        # 蔷薇粉
+  "OPCs-MBP" = "#D43D6F",    # 莓果红
+  
+  # 血管相关 - 中性灰
+  "Vascular" = "#95A5A6"     # 石板灰
+)
+```
+
+
+
+
+```{r}
+# 可视化
+  pathways.show <- cellchat@netP$pathways
+  p1 <- netVisual_heatmap(cellchat)
+
+  p2 <- netVisual_circle(cellchat@net$count, color.use = subclass_colors, vertex.weight = rowSums(cellchat@net$count), weight.scale = T, label.edge= F, title.name = "Number of interactions")
+  # 保存结果
+  dir.create("../plot",showWarnings = F)
+  pdf(paste0("../plot/CellChat_", ct_level, ".pdf"), width = 12, height = 8)
+  print(p1)
+  print(p2)
+  dev.off()
+```

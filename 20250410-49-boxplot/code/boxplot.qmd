@@ -1,0 +1,127 @@
+[1] "GABAergic"     "Glutamatergic" "Astrocytes"    "Microglia"     "T cells"       "BAMs"          "Oligos"       
+[8] "OPCs"          "Vascular"     
+
+```{r}
+cell_counts <- sobj@meta.data %>%
+  group_by(orig.ident, Group) %>%
+  summarise(
+    total_cells = n(),
+    GABAergic = sum(class == "GABAergic"),
+    Glutamatergic = sum(class == "Glutamatergic"),
+    Astrocytes = sum(class == "Astrocytes"),
+    Microglia = sum(class == "Microglia"),
+    Oligos = sum(class == "Oligos"),
+    OPCs = sum(class == "OPCs"),
+    BAMs = sum(class == "BAMs"),
+    Vascular = sum(class == "Vascular"),
+    Tcells = sum(class == "T cells")
+  ) %>%
+  ungroup()
+
+cell_counts <- sobj@meta.data %>%
+  group_by(orig.ident, Group,class) %>%
+  summarise(
+    number = n(),
+  ) %>%
+  ungroup()
+
+
+cell_counts_all <- cell_counts %>%
+  group_by(orig.ident) %>%
+  summarise(
+    total_cells = sum(number)
+  ) %>%
+  ungroup()
+
+
+cell_counts <- cell_counts %>%
+  left_join(cell_counts_all, by = "orig.ident") 
+```
+
+
+```{r}
+prop_data <- cell_counts %>%
+  mutate(proportion = number / total_cells)
+```
+
+
+```{r}
+# 加载统计相关包
+library(ggpubr)
+library(rstatix)
+
+# 先进行统计检验 -----------------------------------------------------------
+# 方法1：Mann-Whitney U检验（非参数检验，推荐用于小样本/非正态分布数据）
+stat_test <- prop_data %>%
+  wilcox_test(proportion ~ Group) %>%
+  add_significance() %>%
+  add_xy_position(x = "Group")
+
+# 方法2：T检验（参数检验，需要数据符合正态分布）
+# 先检查正态性假设
+shapiro_test <- prop_data %>% 
+  group_by(Group) %>% 
+  shapiro_test(proportion)
+# 如果两组数据均符合正态分布（p > 0.05），可以使用：
+# stat_test <- prop_data %>% 
+#   t_test(proportion ~ group) %>%
+#   add_significance() %>%
+#   add_xy_position(x = "group")
+
+# 绘制带统计检验的箱线图 ---------------------------------------------------
+ggplot(prop_data, aes(x = class, y = proportion, fill = Group)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA) +
+  geom_jitter(width = 0.2, size = 3, alpha = 0.8) +
+  scale_fill_manual(values = c("Control" = "#1f77b4", "PD" = "#ff7f0e")) +
+  
+  # 添加统计检验结果
+  # stat_pvalue_manual(
+  #   stat_test, 
+  #   label = "p = {p} ({p.signif})", # 同时显示p值和显著性符号
+  #   tip.length = 0.01,
+  #   bracket.size = 0.6,
+  #   label.size = 4
+  # ) +
+  
+  # 扩展y轴空间给标注留位置
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2))) +
+  
+  labs(title = "Proportion Comparison Between Groups",
+       # subtitle = "Mann-Whitney U Test",
+       x = "Group",
+       y = "Proportion of all celltypes") +
+  theme_classic() +
+  theme(legend.position = "none",
+        plot.title = element_text(face = "bold", size = 14),
+        axis.title = element_text(size = 12))
+
+ggsave("../plot/boxplot.pdf", width = 8, height = 6, dpi = 300)
+```
+
+```{r}
+ggplot(prop_data, aes(x = class, y = proportion, fill = Group)) +
+  geom_boxplot(width = 0.6, outlier.shape = NA) +
+  geom_jitter(width = 0.2, size = 3, alpha = 0.8) +
+  scale_fill_manual(
+    values = c("Control" = "#1f77b4", "PD" = "#ff7f0e"),
+    # name = "Experimental Group", # 图例标题
+    labels = c("Control", "Parkinson's Disease") # 更清晰的标签
+  ) +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.2))) +
+  labs(
+    title = "Proportion Comparison Between Groups",
+    x = "Group",
+    y = "Proportion of all celltypes"
+  ) +
+  theme_classic() +
+  theme(
+    legend.position = "top", # 图例在顶部
+    legend.title = element_text(face = "bold", size = 10), # 标题加粗
+    legend.text = element_text(size = 9), # 标签字号
+    plot.title = element_text(face = "bold", size = 14),
+    axis.title = element_text(size = 12)
+  )
+
+ggsave("../plot/boxplot.pdf", width = 8, height = 6, dpi = 300)
+```
+

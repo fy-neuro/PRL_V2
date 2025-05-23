@@ -1,0 +1,106 @@
+##Begining 
+###packages
+
+```{r}
+library(dplyr)
+library(Seurat)
+library(patchwork)
+library(readr)
+library(cols4all)
+library(ggplot2)
+library(openxlsx)
+library(tibble)
+library(loupeR)
+library(SeuratWrappers)
+```
+
+###jobname
+
+```{r}
+jobname<-"PRL_41"
+```
+
+###load data
+
+```{r}
+sobj<-readRDS("../../20250123-24-Annotation-third-MNN/Documents/sobj_3rd_cleaned.rds")
+
+sobj$subcluster<- sobj$subcluster %>% as.character %>% as.factor
+
+levels(sobj$subcass)
+```
+
+##define function
+```{r}
+cal_pro <- function(sobj,celltype){
+  cell_counts <- sobj.subset@meta.data %>%
+  group_by(orig.ident, Group) %>%
+  summarise(
+    total_cells = n(),
+    celltype = sum(subclass == celltype)
+  ) %>%
+  ungroup()
+
+prop_data <- cell_counts %>%
+  mutate(proportion = celltype / total_cells)
+  
+  return(prop_data)
+}
+```
+
+
+```{r}
+draw_pro <- function(prop_data,celltype){
+  P <- ggplot(prop_data, aes(x = Group, y = proportion, fill = Group)) +
+    geom_boxplot() +
+    geom_jitter(width = 0.2, size = 2) +
+    scale_fill_manual(values = c("Control" = "#1f77b4", "PD" = "#ff7f0e")) +
+    labs(title = "Proportion Comparison Between Groups",
+         x = "Group",
+         y = paste0("Proportion of ",celltype))
+  
+  return(P)
+}
+```
+
+
+```{r}
+prop_data <- cal_pro(sobj.subset,"SST")
+draw_pro(prop_data,"SST")
+```
+
+
+
+##GABAergic subclass distribution
+```{r}
+sobj.subset <- subset(sobj, class == "GABAergic")
+```
+
+
+
+```{r}
+celltypes <- c("PV", "SST",  "VIP", "ID2")
+
+for (celltype in celltypes){
+  prop_data <- cal_pro(sobj.subset,celltype)
+  P <- draw_pro(prop_data,celltype)
+  ggsave(paste0("../plot/proportion_Group_",celltype,".pdf"),width = 10, height = 7)
+}
+```
+
+##Glutamatergic subclass distribution
+```{r}
+sobj.subset <- subset(sobj, class == "Glutamatergic")
+```
+
+
+```{r}
+celltypes <- c("L2/3-CUX2", "L3-5-RORB",  "L5/6-THEMIS", "L5/6-TLE4")
+
+for (celltype in celltypes){
+  prop_data <- cal_pro(sobj.subset,celltype)
+  P <- draw_pro(prop_data,celltype)
+  ggsave(paste0("../plot/proportion_Group_",celltype,".pdf"),width = 10, height = 7)
+}
+```
+

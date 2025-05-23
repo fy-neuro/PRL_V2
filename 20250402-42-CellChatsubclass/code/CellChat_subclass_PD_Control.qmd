@@ -1,0 +1,43 @@
+```{r}
+# # 拆分Control和PD组
+# control_cells <- Cells(sobj)[sobj$Group == "Control"]
+# pd_cells <- Cells(sobj)[sobj$Group == "PD"]
+# 
+# # 创建分组对象
+# cellchat_control <- create_cellchat(sobj[, control_cells], "subclass")
+# cellchat_pd <- create_cellchat(sobj[, pd_cells], "subclass")
+
+# 计算通讯概率（需要分别计算）
+cellchat_control <- Coumpute_Filter(cellchat_control,min.cells = 10)
+cellchat_pd <- Coumpute_Filter(cellchat_pd,min.cells = 10)
+
+# 合并对象进行比较
+cellchat_list <- list(Control = cellchat_control, PD = cellchat_pd)
+saveRDS(cellchat_list,"../Documents/cellchat_list.rds")
+```
+
+```{r}
+# 可视化
+  pathways.show <- cellchat_control@netP$pathways
+  p1 <- netVisual_heatmap(cellchat_control)
+
+  p2 <- netVisual_circle(cellchat_control@net$count, color.use = subclass_colors, vertex.weight = rowSums(cellchat_control@net$count), weight.scale = T, label.edge= F, title.name = "Number of interactions")
+  # 保存结果
+  pdf(paste0("../plot/CellChat_", ct_level,"_control", ".pdf"), width = 12, height = 8)
+  print(p1)
+  print(p2)
+  dev.off()
+```
+
+```{r}
+# 可视化
+  pathways.show <- cellchat_pd@netP$pathways
+  p1 <- netVisual_heatmap(cellchat_pd)
+
+  p2 <- netVisual_circle(cellchat_pd@net$count, color.use = subclass_colors, vertex.weight = rowSums(cellchat_pd@net$count), weight.scale = T, label.edge= F, title.name = "Number of interactions")
+  # 保存结果
+  pdf(paste0("../plot/CellChat_", ct_level,"_pd", ".pdf"), width = 12, height = 8)
+  print(p1)
+  print(p2)
+  dev.off()
+```

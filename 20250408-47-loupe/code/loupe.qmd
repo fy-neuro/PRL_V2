@@ -1,0 +1,10 @@
+```{r}
+sobj <- readRDS("E:/PRL/20250123-24-Annotation-third-MNN/Documents/sobj_3rd_cleaned.rds")
+```
+
+```{r}
+library(loupeR)
+dir.create("../Documents")
+create_loupe_from_seurat(obj = sobj, output_name = "../Documents/PRL0408")
+```
+
